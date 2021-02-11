@@ -12,7 +12,7 @@ interface BaseTxsResult {
   gas: string
 }
 
-interface GetErc20TransfersResult extends BaseTxsResult {
+interface Erc20TransfersResult extends BaseTxsResult {
   nonce: string
   blockHash: string
   tokenName: string
@@ -26,7 +26,7 @@ interface GetErc20TransfersResult extends BaseTxsResult {
   confirmations: string
 }
 
-interface GetInternalTxsResult extends BaseTxsResult {
+interface InternalTxsResult extends BaseTxsResult {
   input: string
   type: string
   gasUsed: string
@@ -35,7 +35,7 @@ interface GetInternalTxsResult extends BaseTxsResult {
   errCode: string
 }
 
-interface GetTxsResult extends BaseTxsResult {
+interface TxsResult extends BaseTxsResult {
   nonce: string
   blockHash: string
   transactionIndex: string
@@ -59,9 +59,9 @@ interface Response<T> {
   result: T[] | string
 }
 
-type GetTxsResponse = Response<GetTxsResult>
-type GetInternalTxsResponse = Response<GetInternalTxsResult>
-type GetErc20TransfersResponse = Response<GetErc20TransfersResult>
+type TxsResponse = Response<TxsResult>
+type InternalTxsResponse = Response<InternalTxsResult>
+type Erc20TransfersResponse = Response<Erc20TransfersResult>
 
 enum Sort {
   Asc = "asc",
@@ -100,15 +100,15 @@ export class Etherscan {
     this.baseUrl = baseUrl
   }
 
-  getTransactions(address: string, sort = Sort.Asc): Promise<GetTxsResponse> {
+  getTransactions(address: string, sort = Sort.Asc): Promise<TxsResponse> {
     return this.getGenericTransactions(address, sort, Module.Account, Action.TxList)
   }
 
-  getInternalTransactions(address: string, sort = Sort.Asc): Promise<GetInternalTxsResponse> {
+  getInternalTransactions(address: string, sort = Sort.Asc): Promise<InternalTxsResponse> {
     return this.getGenericTransactions(address, sort, Module.Account, Action.TxListInternal)
   }
 
-  getErc20Transfers(address: string, sort = Sort.Asc): Promise<GetErc20TransfersResponse> {
+  getErc20Transfers(address: string, sort = Sort.Asc): Promise<Erc20TransfersResponse> {
     return this.getGenericTransactions(address, sort, Module.Account, Action.TokenTx)
   }
 
