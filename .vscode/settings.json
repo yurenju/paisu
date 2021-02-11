@@ -1,9 +1,6 @@
 {
-    "cSpell.words": [
-        "Paisu",
-        "tokentx",
-        "txlistinternal",
-        "txreceipt"
-    ],
-    "editor.tabSize": 2
+  "cSpell.words": ["Paisu", "tokentx", "txlistinternal", "txreceipt"],
+  "editor.tabSize": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true
 }

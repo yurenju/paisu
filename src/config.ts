@@ -1,9 +1,9 @@
 export interface EtherscanConfig {
-  apiKey: string;
+  apiKey: string
 }
 
 export interface Config {
-  addresses: string[];
-  baseCurrency: string;
-  etherscan: EtherscanConfig;
+  addresses: string[]
+  baseCurrency: string
+  etherscan: EtherscanConfig
 }
