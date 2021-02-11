@@ -1,0 +1,35 @@
+{
+  "name": "paisu",
+  "version": "0.1.0",
+  "description": "Paisu is a CLI tool for converting transaction history on the Ethereum network to beancount format text file.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --require ts-node/register"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yurenju/paisu.git"
+  },
+  "author": "Yuren Ju <yurenju@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yurenju/paisu/issues"
+  },
+  "homepage": "https://github.com/yurenju/paisu#readme",
+  "devDependencies": {
+    "@tsconfig/node14": "1.0.0",
+    "@types/chai": "4.2.15",
+    "@types/js-yaml": "4.0.0",
+    "@types/mocha": "8.2.0",
+    "@types/node": "14.14.25",
+    "@types/node-fetch": "2.5.8",
+    "chai": "4.3.0",
+    "mocha": "8.2.1",
+    "ts-node": "9.1.1",
+    "typescript": "4.1.5"
+  },
+  "dependencies": {
+    "js-yaml": "3.14.0",
+    "node-fetch": "2.6.1"
+  }
+}
