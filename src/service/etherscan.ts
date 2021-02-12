@@ -1,7 +1,8 @@
 import { joinParameters } from "../util/parameter"
 import fetch from "node-fetch"
+import Bottleneck from "bottleneck"
 
-interface BaseTxsResult {
+export interface BaseTx {
   blockNumber: string
   timeStamp: string
   hash: string
@@ -12,7 +13,7 @@ interface BaseTxsResult {
   gas: string
 }
 
-interface Erc20TransfersResult extends BaseTxsResult {
+export interface Erc20Transfer extends BaseTx {
   nonce: string
   blockHash: string
   tokenName: string
@@ -26,7 +27,7 @@ interface Erc20TransfersResult extends BaseTxsResult {
   confirmations: string
 }
 
-interface InternalTxsResult extends BaseTxsResult {
+export interface InternalTx extends BaseTx {
   input: string
   type: string
   gasUsed: string
@@ -35,7 +36,7 @@ interface InternalTxsResult extends BaseTxsResult {
   errCode: string
 }
 
-interface TxsResult extends BaseTxsResult {
+export interface NormalTx extends BaseTx {
   nonce: string
   blockHash: string
   transactionIndex: string
@@ -58,10 +59,6 @@ interface Response<T> {
   message: string
   result: T[] | string
 }
-
-type TxsResponse = Response<TxsResult>
-type InternalTxsResponse = Response<InternalTxsResult>
-type Erc20TransfersResponse = Response<Erc20TransfersResult>
 
 enum Sort {
   Asc = "asc",
@@ -89,30 +86,42 @@ interface Parameters {
 
 const DEFAULT_ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 
+const defaultLimiter = new Bottleneck({
+  maxConcurrent: 1,
+  minTime: 200,
+})
+
 export class Etherscan {
   readonly apiKey: string
   readonly rateLimit: number
   readonly baseUrl: string
+  readonly limiter: Bottleneck
 
-  constructor(apiKey: string, rateLimit = 5, baseUrl = DEFAULT_ETHERSCAN_BASE_URL) {
+  constructor(
+    apiKey: string,
+    rateLimit = 5,
+    baseUrl = DEFAULT_ETHERSCAN_BASE_URL,
+    limiter = defaultLimiter
+  ) {
     this.apiKey = apiKey
     this.rateLimit = rateLimit
     this.baseUrl = baseUrl
+    this.limiter = limiter
   }
 
-  getTransactions(address: string, sort = Sort.Asc): Promise<TxsResponse> {
-    return this.getGenericTransactions(address, sort, Module.Account, Action.TxList)
+  getNormalTransactions(address: string, sort = Sort.Asc): Promise<NormalTx[]> {
+    return this.query<NormalTx>(address, sort, Module.Account, Action.TxList)
   }
 
-  getInternalTransactions(address: string, sort = Sort.Asc): Promise<InternalTxsResponse> {
-    return this.getGenericTransactions(address, sort, Module.Account, Action.TxListInternal)
+  getInternalTransactions(address: string, sort = Sort.Asc): Promise<InternalTx[]> {
+    return this.query<InternalTx>(address, sort, Module.Account, Action.TxListInternal)
   }
 
-  getErc20Transfers(address: string, sort = Sort.Asc): Promise<Erc20TransfersResponse> {
-    return this.getGenericTransactions(address, sort, Module.Account, Action.TokenTx)
+  getErc20Transfers(address: string, sort = Sort.Asc): Promise<Erc20Transfer[]> {
+    return this.query<Erc20Transfer>(address, sort, Module.Account, Action.TokenTx)
   }
 
-  getGenericTransactions(address: string, sort: Sort, module: Module, action: Action) {
+  async query<T>(address: string, sort: Sort, module: Module, action: Action): Promise<T[]> {
     const { apiKey } = this
     const parameters: Parameters = {
       module,
@@ -122,6 +131,31 @@ export class Etherscan {
       apiKey,
     }
     const query = `${this.baseUrl}?${joinParameters(parameters)}`
-    return fetch(query).then((res) => res.json())
+    const res = (await this.limiter.schedule(() =>
+      fetch(query).then((res) => res.json())
+    )) as Response<T>
+
+    const errorMessage = getErrorMessage(res)
+
+    if (errorMessage) {
+      throw new Error(errorMessage)
+    }
+
+    if (!Array.isArray(res.result)) {
+      throw new Error("result is not an array")
+    }
+
+    return res.result
   }
+}
+
+function getErrorMessage<T>(res: Response<T>): string {
+  if (res.status === Status.Failure) {
+    if (Array.isArray(res.result)) {
+      return res.message
+    } else {
+      return res.result
+    }
+  }
+  return ""
 }
