@@ -1,2 +1,5 @@
 extension:
   - ts
+spec:
+  - src/**/*_test.ts
+recursive: true

@@ -1,5 +1,4 @@
 import { DateTime } from "luxon"
-import "reflect-metadata"
 import { copyValues } from "../util/object"
 import { DEFAULT_DATE, Directive } from "./directive"
 import { Posting } from "./posting"

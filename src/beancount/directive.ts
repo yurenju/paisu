@@ -9,6 +9,4 @@ export const DEFAULT_HOLDING = "HOOL"
 
 export abstract class Directive {
   [key: string]: any
-
-  abstract toString(): string
 }

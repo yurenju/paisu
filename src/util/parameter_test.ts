@@ -1,5 +1,5 @@
 import { expect } from "chai"
-import { joinParameters } from "../src/util/parameter"
+import { joinParameters } from "./parameter"
 
 describe("joinParameters", () => {
   it("basic concat", () => {

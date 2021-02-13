@@ -1,14 +1,17 @@
 import { DateTime } from "luxon"
-import "reflect-metadata"
 import { copyValues } from "../util/object"
 import { Directive, DEFAULT_SYMBOL, DEFAULT_ACCOUNT, DEFAULT_DATE } from "./directive"
 
-export class Open extends Directive {
-  readonly type: string = "open"
+export enum BookingMethod {
+  FIFO = "FIFO",
+  LIFO = "LIFO",
+}
 
+export class Open extends Directive {
   date: DateTime = DEFAULT_DATE
   symbol: string = DEFAULT_SYMBOL
   account: string = DEFAULT_ACCOUNT
+  bookingMethod?: BookingMethod
 
   constructor(open?: Partial<Open>) {
     super()
@@ -18,7 +21,12 @@ export class Open extends Directive {
   }
 
   toString() {
-    const { date, account, symbol } = this
-    return `${date.toISODate()} open ${account} ${symbol}`
+    const { date, account, symbol, bookingMethod } = this
+    let str = `${date.toISODate()} open ${account} ${symbol}`
+    if (bookingMethod) {
+      str += ` "${bookingMethod}"`
+    }
+
+    return str
   }
 }

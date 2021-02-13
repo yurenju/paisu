@@ -2,7 +2,7 @@ import Big from "big.js"
 import { copyValues } from "../util/object"
 import { DEFAULT_SYMBOL, DEFAULT_ACCOUNT, DEFAULT_AMOUNT } from "./directive"
 
-enum PriceType {
+export enum PriceType {
   Unit = "unit",
   Total = "total",
 }
