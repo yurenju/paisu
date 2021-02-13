@@ -1,5 +1,5 @@
 import { DateTime } from "luxon"
-import { copyValues } from "../util/object"
+import { copyValues } from "../util/misc"
 import { DEFAULT_DATE, Directive } from "./directive"
 import { Posting } from "./posting"
 

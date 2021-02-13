@@ -1,5 +1,5 @@
 import { DateTime } from "luxon"
-import { copyValues } from "../util/object"
+import { copyValues } from "../util/misc"
 import { Directive, DEFAULT_SYMBOL, DEFAULT_ACCOUNT, DEFAULT_DATE } from "./directive"
 
 export enum BookingMethod {

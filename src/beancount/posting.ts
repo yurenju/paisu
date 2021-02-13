@@ -1,5 +1,5 @@
 import Big from "big.js"
-import { copyValues } from "../util/object"
+import { copyValues } from "../util/misc"
 import { DEFAULT_SYMBOL, DEFAULT_ACCOUNT, DEFAULT_AMOUNT } from "./directive"
 
 export enum PriceType {
