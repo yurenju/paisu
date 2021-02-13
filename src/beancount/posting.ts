@@ -45,7 +45,7 @@ export class Posting {
     const lines = []
 
     let major = `  ${account}`
-    if (amount.gt(0)) {
+    if (!amount.eq(0)) {
       major += ` ${amount} ${symbol}`
 
       if (cost) {
