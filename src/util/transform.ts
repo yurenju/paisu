@@ -51,9 +51,13 @@ export function getNormalTxPostings(normalTx: NormalTx, config: Config): Posting
   return postings
 }
 
-function getEtherTransferPostings(tx: BaseTx, amount: Big, config: Config): Posting[] {
+function getEtherTransferPostings(
+  tx: BaseTx,
+  amount: Big,
+  config: Config,
+  symbol = ETH_SYMBOL
+): Posting[] {
   const postings: Posting[] = []
-  const symbol = ETH_SYMBOL
   const from = getAccountName(tx.from, AccountType.From, config)
   const to = getAccountName(tx.to, AccountType.To, config)
 
@@ -62,11 +66,15 @@ function getEtherTransferPostings(tx: BaseTx, amount: Big, config: Config): Post
   return postings
 }
 
-function getTxFeePostings(normalTx: NormalTx, config: Config): Posting[] {
+function getTxFeePostings(
+  normalTx: NormalTx,
+  config: Config,
+  symbol = ETH_SYMBOL,
+  decimals = ETH_DECIMALS
+): Posting[] {
   const postings: Posting[] = []
-  const symbol = ETH_SYMBOL
   const from = getAccountName(normalTx.from, AccountType.From, config)
-  const amount = new Big(normalTx.gasPrice).mul(normalTx.gasUsed).div(new Big(10).pow(ETH_DECIMALS))
+  const amount = new Big(normalTx.gasPrice).mul(normalTx.gasUsed).div(new Big(10).pow(decimals))
 
   postings.push(new Posting({ account: from, symbol, amount: amount.mul(-1) }))
   postings.push(new Posting({ account: config.txFeeAccount, symbol, amount }))
