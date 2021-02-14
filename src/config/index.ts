@@ -12,5 +12,6 @@ export interface Config {
   baseCurrency: string
   defaultExpense: string
   defaultIncome: string
+  txFeeAccount: string
   etherscan: EtherscanConfig
 }

@@ -11,7 +11,6 @@ enum TxFlag {
 export class Transaction extends Directive {
   date: DateTime = DEFAULT_DATE
   flag: TxFlag = TxFlag.Completed
-
   payee: string = ""
   narration: string = ""
   metadata: Record<string, string> = {}

@@ -11,6 +11,7 @@ export interface BaseTx {
   contractAddress: string
   value: string
   gas: string
+  gasUsed: string
 }
 
 export interface Erc20Transfer extends BaseTx {
@@ -21,7 +22,6 @@ export interface Erc20Transfer extends BaseTx {
   tokenDecimal: string
   transactionIndex: string
   gasPrice: string
-  gasUsed: string
   cumulativeGasUsed: string
   input: string
   confirmations: string
@@ -30,7 +30,6 @@ export interface Erc20Transfer extends BaseTx {
 export interface InternalTx extends BaseTx {
   input: string
   type: string
-  gasUsed: string
   traceId: string
   isError: string
   errCode: string
@@ -45,7 +44,6 @@ export interface NormalTx extends BaseTx {
   txreceipt_status: string
   input: string
   cumulativeGasUsed: string
-  gasUsed: string
   confirmations: string
 }
 

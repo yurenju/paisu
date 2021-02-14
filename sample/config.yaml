@@ -3,6 +3,7 @@ accounts:
     address: "0x6344793A588C7B3076bf74562463998b2966eE91"
 defaultExpense: Expenses:Unknown
 defaultIncome: Income:Unknown
+txFeeAccount: Expenses:Ethereum:TxFee
 baseCurrency: USD
 etherscan:
   apiKey: 3JSKEA1SYC1D36SED3C8FMV5IXMP1XP4DD

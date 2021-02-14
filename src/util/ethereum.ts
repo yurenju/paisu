@@ -1,6 +1,9 @@
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan"
 
-interface TxCombined {
+export const ETH_DECIMALS = 18
+export const ETH_SYMBOL = "ETH"
+
+export interface TxCombined {
   hash: string
   timeStamp: number
   normalTx?: NormalTx
