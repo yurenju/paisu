@@ -1,6 +1,7 @@
 import { joinParameters } from "../util/parameter"
 import fetch from "node-fetch"
 import Bottleneck from "bottleneck"
+import { URLSearchParams } from "url"
 
 export interface BaseTx {
   blockNumber: string
@@ -82,7 +83,7 @@ interface Parameters {
   apiKey: string
 }
 
-const DEFAULT_ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
+const ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 
 const defaultLimiter = new Bottleneck({
   maxConcurrent: 1,
@@ -98,7 +99,7 @@ export class Etherscan {
   constructor(
     apiKey: string,
     rateLimit = 5,
-    baseUrl = DEFAULT_ETHERSCAN_BASE_URL,
+    baseUrl = ETHERSCAN_BASE_URL,
     limiter = defaultLimiter
   ) {
     this.apiKey = apiKey
@@ -121,14 +122,14 @@ export class Etherscan {
 
   async query<T>(address: string, sort: Sort, module: Module, action: Action): Promise<T[]> {
     const { apiKey } = this
-    const parameters: Parameters = {
+    const parameters = new URLSearchParams({
       module,
       action,
       address,
       sort,
       apiKey,
-    }
-    const query = `${this.baseUrl}?${joinParameters(parameters)}`
+    }).toString()
+    const query = `${this.baseUrl}?${parameters}`
     const res = (await this.limiter.schedule(() =>
       fetch(query).then((res) => res.json())
     )) as Response<T>
