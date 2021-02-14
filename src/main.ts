@@ -9,9 +9,10 @@ async function main() {
   const content = yaml.load(configFile) as Config
 
   const etherscan = new Etherscan(content.etherscan.apiKey)
-  const txs = await etherscan.getNormalTransactions(content.addresses[0])
-  const erc20Transfers = await etherscan.getErc20Transfers(content.addresses[0])
-  const internalTxs = await etherscan.getInternalTransactions(content.addresses[0])
+  const account = content.accounts[0]
+  const txs = await etherscan.getNormalTransactions(account.address)
+  const erc20Transfers = await etherscan.getErc20Transfers(account.address)
+  const internalTxs = await etherscan.getInternalTransactions(account.address)
   const combinedTxs = combineTxs(txs, internalTxs, erc20Transfers)
   console.log(combinedTxs)
 }
