@@ -1,4 +1,3 @@
-import { joinParameters } from "../util/parameter"
 import fetch from "node-fetch"
 import Bottleneck from "bottleneck"
 import { URLSearchParams } from "url"
