@@ -10,6 +10,7 @@ export enum PriceType {
 export class Cost {
   amount: Big = DEFAULT_AMOUNT
   symbol: string = DEFAULT_SYMBOL
+  ambiguous: boolean = false
 
   constructor(cost: Partial<Cost>) {
     if (cost) {
@@ -49,7 +50,7 @@ export class Posting {
       major += ` ${amount} ${symbol}`
 
       if (cost) {
-        if (cost.amount.eq(0)) {
+        if (cost.ambiguous) {
           major += " {}"
         } else {
           major += ` {${cost.amount} ${cost.symbol}}`

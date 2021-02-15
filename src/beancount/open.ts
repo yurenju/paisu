@@ -9,8 +9,8 @@ export enum BookingMethod {
 
 export class Open extends Directive {
   date: DateTime = DEFAULT_DATE
-  symbol: string = DEFAULT_SYMBOL
   account: string = DEFAULT_ACCOUNT
+  symbol?: string
   bookingMethod?: BookingMethod
 
   constructor(open?: Partial<Open>) {
@@ -22,7 +22,10 @@ export class Open extends Directive {
 
   toString() {
     const { date, account, symbol, bookingMethod } = this
-    let str = `${date.toISODate()} open ${account} ${symbol}`
+    let str = `${date.toISODate()} open ${account}`
+    if (symbol) {
+      str += ` ${symbol}`
+    }
     if (bookingMethod) {
       str += ` "${bookingMethod}"`
     }

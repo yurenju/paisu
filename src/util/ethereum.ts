@@ -1,4 +1,4 @@
-import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan"
+import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
 
 export const ETH_DECIMALS = 18
 export const ETH_SYMBOL = "ETH"

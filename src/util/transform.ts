@@ -1,9 +1,11 @@
 import Big from "big.js"
 import { DateTime } from "luxon"
-import { Posting, Transaction } from "../beancount"
-import { Config } from "../config"
-import { BaseTx, Erc20Transfer, NormalTx } from "../service/etherscan"
-import { ETH_DECIMALS, ETH_SYMBOL, TxCombined } from "./ethereum"
+import { BookingMethod, Cost, Directive, Open, Posting, Transaction } from "../beancount"
+import { OperatingCurrency } from "../beancount/operating_currency"
+import { Account, Config } from "../config"
+import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
+import { BaseTx, Erc20Transfer, NormalTx } from "../service/etherscan_model"
+import { ETH_SYMBOL, TxCombined } from "./ethereum"
 import { parseBigNumber } from "./misc"
 
 enum AccountType {
@@ -11,95 +13,138 @@ enum AccountType {
   To = "to",
 }
 
-export function roastBean(combinedTx: TxCombined, config: Config): Transaction {
-  const metadata = {
-    hash: combinedTx.hash,
-  }
-  const date = DateTime.fromSeconds(combinedTx.timeStamp)
-  const beanTx = new Transaction({ date, metadata })
+export class Transformer {
+  readonly coingecko: CoinGecko
+  readonly config: Config
 
-  // normal transaction
-  if (combinedTx.normalTx) {
-    const postings = getNormalTxPostings(combinedTx.normalTx, config)
-    beanTx.postings.push(...postings)
+  constructor(coingecko: CoinGecko, config: Config) {
+    this.coingecko = coingecko
+    this.config = config
   }
 
-  // internal transactions
-  const internalTxPostings = combinedTx.internalTxs.map((internalTx) => {
-    const value = parseBigNumber(internalTx.value)
-    return getEtherTransferPostings(internalTx, value, config)
-  })
-  beanTx.postings.push(...internalTxPostings.flat())
+  initBeans(date: DateTime): Directive[] {
+    const directives: Directive[] = []
+    directives.push(
+      new OperatingCurrency(this.config.baseCurrency),
+      ...this.config.accounts.map(
+        (account) => new Open({ date, account: account.name, bookingMethod: BookingMethod.FIFO })
+      ),
+      new Open({ date, account: this.config.defaultExpense }),
+      new Open({ date, account: this.config.defaultIncome }),
+      new Open({ date, account: this.config.pnlAccount }),
+      new Open({ date, account: this.config.txFeeAccount })
+    )
 
-  // erc20 transfers
-  const erc20TransferPostings = combinedTx.erc20Transfers.map((erc20Transfer) =>
-    getErc20TransferPostings(erc20Transfer, config)
-  )
-  beanTx.postings.push(...erc20TransferPostings.flat())
-
-  return beanTx
-}
-
-export function getNormalTxPostings(normalTx: NormalTx, config: Config): Posting[] {
-  const postings: Posting[] = []
-  const value = parseBigNumber(normalTx.value)
-
-  // if value > 0 get postings for ETH transfer
-  if (value.gt(0)) {
-    postings.push(...getEtherTransferPostings(normalTx, value, config))
+    return directives
   }
 
-  // if transaction is created from the account itself, get postings for tx fee
-  const fromOwnAccounts = config.accounts.find((acc) => compareAddress(acc.address, normalTx.from))
-  if (fromOwnAccounts) {
-    postings.push(...getTxFeePostings(normalTx, config))
+  async roastBean(combinedTx: TxCombined): Promise<Transaction> {
+    const { hash } = combinedTx
+    const metadata = { hash }
+    const date = DateTime.fromSeconds(combinedTx.timeStamp)
+    const beanTx = new Transaction({ date, metadata })
+    const ethCostPrice = await this.coingecko.getHistoryPriceByCurrency(
+      ETHEREUM_COIN_ID,
+      DateTime.fromSeconds(combinedTx.timeStamp),
+      this.config.baseCurrency
+    )
+    const ethCost = new Cost({ symbol: this.config.baseCurrency, amount: ethCostPrice })
+    //TODO: Check if timestamp is string or number
+
+    // normal transaction
+    if (combinedTx.normalTx) {
+      const postings = await this.getNormalTxPostings(combinedTx.normalTx, ethCost)
+      beanTx.postings.push(...postings)
+    }
+
+    // internal transactions
+    const internalTxPostings = await Promise.all(
+      combinedTx.internalTxs.map((internalTx) =>
+        this.getEtherTransferPostings(internalTx, parseBigNumber(internalTx.value), ethCost)
+      )
+    )
+    beanTx.postings.push(...internalTxPostings.flat())
+
+    // erc20 transfers
+    const erc20TransferPostings = await Promise.all(
+      combinedTx.erc20Transfers.map((erc20Transfer) => this.getErc20TransferPostings(erc20Transfer))
+    )
+    beanTx.postings.push(...erc20TransferPostings.flat())
+
+    // add pnl account for balancing
+    beanTx.postings.push(new Posting({ account: this.config.pnlAccount }))
+
+    return beanTx
   }
 
-  return postings
+  async getNormalTxPostings(normalTx: NormalTx, cost: Cost): Promise<Posting[]> {
+    const postings: Posting[] = []
+    const value = parseBigNumber(normalTx.value)
+
+    // if value > 0 get postings for ETH transfer
+    if (value.gt(0)) {
+      postings.push(...this.getEtherTransferPostings(normalTx, value, cost))
+    }
+
+    // if transaction is created from the account itself, get postings for tx fee
+    if (findAccount(this.config.accounts, normalTx.from)) {
+      postings.push(...this.getTxFeePostings(normalTx, cost))
+    }
+
+    return postings
+  }
+
+  async getErc20TransferPostings(transfer: Erc20Transfer): Promise<Posting[]> {
+    const from = getAccountName(transfer.from, AccountType.From, this.config)
+    const to = getAccountName(transfer.to, AccountType.To, this.config)
+    const amount = parseBigNumber(transfer.value, Number.parseInt(transfer.tokenDecimal))
+    const symbol = transfer.tokenSymbol.toUpperCase()
+    const date = DateTime.fromSeconds(Number.parseInt(transfer.timeStamp))
+    const coinInfo = await this.coingecko.getCoinInfo(transfer.contractAddress)
+    const costPrice = await this.coingecko.getHistoryPriceByCurrency(
+      coinInfo.id,
+      date,
+      this.config.baseCurrency
+    )
+    const cost = new Cost({ amount: costPrice, symbol: this.config.baseCurrency })
+
+    return this.getTransferPostings(from, to, amount, symbol, cost)
+  }
+
+  getEtherTransferPostings(tx: BaseTx, amount: Big, cost: Cost, symbol = ETH_SYMBOL): Posting[] {
+    const from = getAccountName(tx.from, AccountType.From, this.config)
+    const to = getAccountName(tx.to, AccountType.To, this.config)
+    return this.getTransferPostings(from, to, amount, symbol, cost)
+  }
+
+  getTxFeePostings(normalTx: NormalTx, cost: Cost, symbol = ETH_SYMBOL): Posting[] {
+    const from = getAccountName(normalTx.from, AccountType.From, this.config)
+    const gasPrice = parseBigNumber(normalTx.gasPrice)
+    const amount = gasPrice.mul(normalTx.gasUsed)
+    return this.getTransferPostings(from, this.config.txFeeAccount, amount, symbol, cost)
+  }
+
+  getTransferPostings(
+    fromAccount: string,
+    toAccount: string,
+    amount: Big,
+    symbol: string,
+    cost: Cost
+  ): Posting[] {
+    const fromPosting = new Posting({ account: fromAccount, amount: amount.mul(-1), symbol, cost })
+    const toPosting = new Posting({ account: toAccount, amount, symbol, cost })
+
+    if (fromAccount.startsWith("Assets")) {
+      const ambiguousCost = new Cost({ ...cost, ambiguous: true })
+      fromPosting.cost = ambiguousCost
+    }
+
+    return [fromPosting, toPosting]
+  }
 }
 
-export function getErc20TransferPostings(transfer: Erc20Transfer, config: Config): Posting[] {
-  const postings: Posting[] = []
-  const from = getAccountName(transfer.from, AccountType.From, config)
-  const to = getAccountName(transfer.to, AccountType.To, config)
-  const amount = parseBigNumber(transfer.value, Number.parseInt(transfer.tokenDecimal))
-  const symbol = transfer.tokenSymbol.toUpperCase()
-  postings.push(new Posting({ account: from, symbol, amount: amount.mul(-1) }))
-  postings.push(new Posting({ account: to, symbol, amount }))
-
-  return postings
-}
-
-function getEtherTransferPostings(
-  tx: BaseTx,
-  amount: Big,
-  config: Config,
-  symbol = ETH_SYMBOL
-): Posting[] {
-  const postings: Posting[] = []
-  const from = getAccountName(tx.from, AccountType.From, config)
-  const to = getAccountName(tx.to, AccountType.To, config)
-
-  postings.push(new Posting({ account: from, symbol, amount: amount.mul(-1) }))
-  postings.push(new Posting({ account: to, symbol, amount }))
-  return postings
-}
-
-function getTxFeePostings(
-  normalTx: NormalTx,
-  config: Config,
-  symbol = ETH_SYMBOL,
-  decimals = ETH_DECIMALS
-): Posting[] {
-  const postings: Posting[] = []
-  const from = getAccountName(normalTx.from, AccountType.From, config)
-  const gasPrice = parseBigNumber(normalTx.gasPrice)
-  const amount = gasPrice.mul(normalTx.gasUsed)
-
-  postings.push(new Posting({ account: from, symbol, amount: amount.mul(-1) }))
-  postings.push(new Posting({ account: config.txFeeAccount, symbol, amount }))
-
-  return postings
+function findAccount(accounts: Account[], accountAddress: string) {
+  return accounts.find((acc) => compareAddress(acc.address, accountAddress))
 }
 
 function compareAddress(addr1: string, addr2: string): boolean {
