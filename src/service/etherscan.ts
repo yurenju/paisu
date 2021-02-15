@@ -91,18 +91,11 @@ const defaultLimiter = new Bottleneck({
 
 export class Etherscan {
   readonly apiKey: string
-  readonly rateLimit: number
   readonly baseUrl: string
   readonly limiter: Bottleneck
 
-  constructor(
-    apiKey: string,
-    rateLimit = 5,
-    baseUrl = ETHERSCAN_BASE_URL,
-    limiter = defaultLimiter
-  ) {
+  constructor(apiKey: string, baseUrl = ETHERSCAN_BASE_URL, limiter = defaultLimiter) {
     this.apiKey = apiKey
-    this.rateLimit = rateLimit
     this.baseUrl = baseUrl
     this.limiter = limiter
   }
