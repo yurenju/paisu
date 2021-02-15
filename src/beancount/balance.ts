@@ -22,7 +22,7 @@ export class Balance extends Directive {
     }
   }
 
-  toString() {
+  toString(): string {
     const { date, account, amount, symbol } = this
     return `${date.toISODate()} balance ${account} ${amount} ${symbol}`
   }

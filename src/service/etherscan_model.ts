@@ -49,7 +49,7 @@ export enum Status {
 export interface Response<T> {
   status: Status
   message: string
-  result: T[] | string
+  result: T | string
 }
 export enum Sort {
   Asc = "asc",
@@ -62,4 +62,5 @@ export enum Action {
   TxList = "txlist",
   TxListInternal = "txlistinternal",
   TokenTx = "tokentx",
+  TokenBalance = "tokenbalance",
 }

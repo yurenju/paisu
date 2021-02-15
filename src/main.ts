@@ -7,7 +7,7 @@ import { Transformer } from "./util/transform"
 import { promisify } from "util"
 import { CoinGecko } from "./service/coingecko"
 import { DateTime } from "luxon"
-import { Transaction } from "./beancount"
+import { Directive } from "./beancount"
 
 async function main() {
   const configFile = readFileSync("./sample/config.yaml", { encoding: "utf-8" })
@@ -22,15 +22,24 @@ async function main() {
   const erc20Transfers = await etherscan.getErc20Transfers(account.address)
   const internalTxs = await etherscan.getInternalTransactions(account.address)
   const combinedTxs = combineTxs(txs, internalTxs, erc20Transfers)
-  const initBeans = transformer.initBeans(DateTime.fromISO("2018-01-01"))
-  const beanTxs: Transaction[] = []
+  const setupBeans: Directive[] = []
+  const txBeans: Directive[] = []
+  const balanceBeans: Directive[] = []
+  setupBeans.push(...transformer.initBeans(DateTime.fromISO("2018-01-01")))
+
   for (let i = 0; i < combinedTxs.length; i++) {
     const combinedTx = combinedTxs[i]
     console.log(`processing ${i + 1}/${combinedTxs.length}...`)
-    const bean = await transformer.roastBean(combinedTx)
-    beanTxs.push(bean)
+    const bean = await transformer.getTransaction(combinedTx)
+    txBeans.push(bean)
   }
-  const result = [...initBeans, ...beanTxs].map((tx) => tx.toString()).join("\n\n")
+
+  const balances = await transformer.getBalances(account, erc20Transfers, etherscan)
+  balanceBeans.push(...balances)
+
+  const result = [setupBeans, txBeans, balanceBeans]
+    .map((beans) => beans.map((bean) => bean.toString()).join("\n"))
+    .join("\n\n")
   const write = promisify(writeFile)
   await write("crypto.bean", result, "utf8")
 }

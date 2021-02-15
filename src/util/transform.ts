@@ -1,9 +1,10 @@
 import Big from "big.js"
 import { DateTime } from "luxon"
-import { BookingMethod, Cost, Directive, Open, Posting, Transaction } from "../beancount"
+import { Balance, BookingMethod, Cost, Directive, Open, Posting, Transaction } from "../beancount"
 import { OperatingCurrency } from "../beancount/operating_currency"
 import { Account, Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
+import { Etherscan } from "../service/etherscan"
 import { BaseTx, Erc20Transfer, NormalTx } from "../service/etherscan_model"
 import { ETH_SYMBOL, TxCombined } from "./ethereum"
 import { parseBigNumber } from "./misc"
@@ -38,7 +39,7 @@ export class Transformer {
     return directives
   }
 
-  async roastBean(combinedTx: TxCombined): Promise<Transaction> {
+  async getTransaction(combinedTx: TxCombined): Promise<Transaction> {
     const { hash } = combinedTx
     const metadata = { hash }
     const date = DateTime.fromSeconds(combinedTx.timeStamp)
@@ -75,6 +76,33 @@ export class Transformer {
     beanTx.postings.push(new Posting({ account: this.config.pnlAccount }))
 
     return beanTx
+  }
+
+  async getBalances(
+    account: Account,
+    erc20Transfers: Erc20Transfer[],
+    etherscan: Etherscan
+  ): Promise<Balance[]> {
+    const balances: Balance[] = []
+    const tokenMap = new Map<string, Erc20Transfer>()
+    erc20Transfers.forEach((transfer) => {
+      tokenMap.set(transfer.contractAddress, transfer)
+    })
+    const tokenInfos = Array.from(tokenMap.values())
+    for (let i = 0; i < tokenInfos.length; i++) {
+      const tokenInfo = tokenInfos[i]
+      console.log(`getting balance for ${tokenInfo.tokenSymbol}`)
+      const result = await etherscan.getErc20Balance(account.address, tokenInfo.contractAddress)
+      balances.push(
+        new Balance({
+          account: account.name,
+          amount: parseBigNumber(result, Number.parseInt(tokenInfo.tokenDecimal)),
+          symbol: tokenInfo.tokenSymbol.toUpperCase(),
+        })
+      )
+    }
+
+    return balances
   }
 
   async getNormalTxPostings(normalTx: NormalTx, cost: Cost): Promise<Posting[]> {

@@ -4,6 +4,7 @@
     "Paisu",
     "beancount",
     "luxon",
+    "tokenbalance",
     "tokentx",
     "txlistinternal",
     "txreceipt"

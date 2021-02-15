@@ -31,27 +31,50 @@ export class Etherscan {
   }
 
   getNormalTransactions(address: string, sort = Sort.Asc): Promise<NormalTx[]> {
-    return this.query<NormalTx>(address, sort, Module.Account, Action.TxList)
+    return this.query<NormalTx[]>(address, Module.Account, Action.TxList, sort)
   }
 
   getInternalTransactions(address: string, sort = Sort.Asc): Promise<InternalTx[]> {
-    return this.query<InternalTx>(address, sort, Module.Account, Action.TxListInternal)
+    return this.query<InternalTx[]>(address, Module.Account, Action.TxListInternal, sort)
   }
 
   getErc20Transfers(address: string, sort = Sort.Asc): Promise<Erc20Transfer[]> {
-    return this.query<Erc20Transfer>(address, sort, Module.Account, Action.TokenTx)
+    return this.query<Erc20Transfer[]>(address, Module.Account, Action.TokenTx, sort)
   }
 
-  async query<T>(address: string, sort: Sort, module: Module, action: Action): Promise<T[]> {
+  getErc20Balance(accountAddress: string, contractAddress: string): Promise<string> {
+    return this.query<string>(
+      accountAddress,
+      Module.Account,
+      Action.TokenBalance,
+      undefined,
+      contractAddress
+    )
+  }
+
+  async query<T>(
+    address: string,
+    module: Module,
+    action: Action,
+    sort?: Sort,
+    contractAddress?: string
+  ): Promise<T> {
     const { apiKey } = this
     const parameters = new URLSearchParams({
       module,
       action,
       address,
-      sort,
       apiKey,
-    }).toString()
-    const query = `${this.baseUrl}?${parameters}`
+    })
+
+    if (sort) {
+      parameters.append("sort", sort)
+    }
+    if (contractAddress) {
+      parameters.append("contractAddress", contractAddress)
+    }
+
+    const query = `${this.baseUrl}?${parameters.toString()}`
     const res = (await this.limiter.schedule(() =>
       fetch(query).then((res) => res.json())
     )) as Response<T>
@@ -62,11 +85,7 @@ export class Etherscan {
       throw new Error(errorMessage)
     }
 
-    if (!Array.isArray(res.result)) {
-      throw new Error("result is not an array")
-    }
-
-    return res.result
+    return res.result as T
   }
 }
 
@@ -75,7 +94,7 @@ function getErrorMessage<T>(res: Response<T>): string {
     if (Array.isArray(res.result)) {
       return res.message
     } else {
-      return res.result
+      return res.result as string
     }
   }
   return ""
