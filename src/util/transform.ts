@@ -2,8 +2,9 @@ import Big from "big.js"
 import { DateTime } from "luxon"
 import { Posting, Transaction } from "../beancount"
 import { Config } from "../config"
-import { BaseTx, NormalTx } from "../service/etherscan"
+import { BaseTx, Erc20Transfer, NormalTx } from "../service/etherscan"
 import { ETH_DECIMALS, ETH_SYMBOL, TxCombined } from "./ethereum"
+import { parseBigNumber } from "./misc"
 
 enum AccountType {
   From = "from",
@@ -17,25 +18,31 @@ export function roastBean(combinedTx: TxCombined, config: Config): Transaction {
   const date = DateTime.fromSeconds(combinedTx.timeStamp)
   const beanTx = new Transaction({ date, metadata })
 
+  // normal transaction
   if (combinedTx.normalTx) {
     const postings = getNormalTxPostings(combinedTx.normalTx, config)
     beanTx.postings.push(...postings)
   }
-  if (combinedTx.internalTxs.length > 0) {
-    const postings = combinedTx.internalTxs.map((internalTx) => {
-      const value = new Big(internalTx.value).div(new Big(10).pow(ETH_DECIMALS))
-      return getEtherTransferPostings(internalTx, value, config)
-    })
-    beanTx.postings.push(...postings.flat())
-  }
+
+  // internal transactions
+  const internalTxPostings = combinedTx.internalTxs.map((internalTx) => {
+    const value = parseBigNumber(internalTx.value)
+    return getEtherTransferPostings(internalTx, value, config)
+  })
+  beanTx.postings.push(...internalTxPostings.flat())
+
+  // erc20 transfers
+  const erc20TransferPostings = combinedTx.erc20Transfers.map((erc20Transfer) =>
+    getErc20TransferPostings(erc20Transfer, config)
+  )
+  beanTx.postings.push(...erc20TransferPostings.flat())
 
   return beanTx
 }
 
 export function getNormalTxPostings(normalTx: NormalTx, config: Config): Posting[] {
   const postings: Posting[] = []
-
-  const value = new Big(normalTx.value).div(new Big(10).pow(ETH_DECIMALS))
+  const value = parseBigNumber(normalTx.value)
 
   // if value > 0 get postings for ETH transfer
   if (value.gt(0)) {
@@ -47,6 +54,18 @@ export function getNormalTxPostings(normalTx: NormalTx, config: Config): Posting
   if (fromOwnAccounts) {
     postings.push(...getTxFeePostings(normalTx, config))
   }
+
+  return postings
+}
+
+export function getErc20TransferPostings(transfer: Erc20Transfer, config: Config): Posting[] {
+  const postings: Posting[] = []
+  const from = getAccountName(transfer.from, AccountType.From, config)
+  const to = getAccountName(transfer.to, AccountType.To, config)
+  const amount = parseBigNumber(transfer.value, Number.parseInt(transfer.tokenDecimal))
+  const symbol = transfer.tokenSymbol.toUpperCase()
+  postings.push(new Posting({ account: from, symbol, amount: amount.mul(-1) }))
+  postings.push(new Posting({ account: to, symbol, amount }))
 
   return postings
 }
@@ -74,7 +93,8 @@ function getTxFeePostings(
 ): Posting[] {
   const postings: Posting[] = []
   const from = getAccountName(normalTx.from, AccountType.From, config)
-  const amount = new Big(normalTx.gasPrice).mul(normalTx.gasUsed).div(new Big(10).pow(decimals))
+  const gasPrice = parseBigNumber(normalTx.gasPrice)
+  const amount = gasPrice.mul(normalTx.gasUsed)
 
   postings.push(new Posting({ account: from, symbol, amount: amount.mul(-1) }))
   postings.push(new Posting({ account: config.txFeeAccount, symbol, amount }))
