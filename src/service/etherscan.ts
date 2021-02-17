@@ -12,9 +12,11 @@ import {
   Status,
   QueryProps,
 } from "./etherscan_model"
+import { Cache } from "../util/cache"
 
 const ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 
+const defaultCache = Cache.load("etherscan.cache")
 const defaultLimiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: 200,
@@ -24,11 +26,18 @@ export class Etherscan {
   readonly apiKey: string
   readonly baseUrl: string
   readonly limiter: Bottleneck
+  readonly cache: Cache
 
-  constructor(apiKey: string, baseUrl = ETHERSCAN_BASE_URL, limiter = defaultLimiter) {
+  constructor(
+    apiKey: string,
+    baseUrl = ETHERSCAN_BASE_URL,
+    limiter = defaultLimiter,
+    cache = defaultCache
+  ) {
     this.apiKey = apiKey
     this.baseUrl = baseUrl
     this.limiter = limiter
+    this.cache = cache
   }
 
   getNormalTransactions(
@@ -91,19 +100,26 @@ export class Etherscan {
   }
 
   async query<T>(props: QueryProps): Promise<T> {
-    const parameters = new URLSearchParams(props as any)
-    const query = `${this.baseUrl}?${parameters.toString()}`
-    const res = (await this.limiter.schedule(() =>
-      fetch(query).then((res) => res.json())
-    )) as Response<T>
+    const parameters = new URLSearchParams(props as any).toString()
+    const cached = this.cache.get(parameters)
 
-    const errorMessage = getErrorMessage(res)
+    if (!cached) {
+      const query = `${this.baseUrl}?${parameters}`
+      const res = (await this.limiter.schedule(() =>
+        fetch(query).then((res) => res.json())
+      )) as Response<T>
 
-    if (errorMessage) {
-      throw new Error(errorMessage)
+      const errorMessage = getErrorMessage(res)
+
+      if (errorMessage) {
+        throw new Error(errorMessage)
+      }
+
+      await this.cache.put(parameters, JSON.stringify(res.result))
+      return res.result as T
     }
 
-    return res.result as T
+    return JSON.parse(cached) as T
   }
 }
 

@@ -50,7 +50,8 @@ export class Transformer {
 
   async getTransaction(combinedTx: TxCombined): Promise<Transaction> {
     const { hash } = combinedTx
-    const metadata = { hash }
+    const blockNumber = getBlockNumber(combinedTx)
+    const metadata = { hash, blockNumber }
     const date = DateTime.fromSeconds(combinedTx.timeStamp)
     const beanTx = new Transaction({ date, metadata })
     const ethCostPrice = await this.coingecko.getHistoryPriceByCurrency(
@@ -147,7 +148,11 @@ export class Transformer {
     )
     const cost = new Cost({ amount: costPrice, symbol: new TokenSymbol(this.config.baseCurrency) })
 
-    return this.getTransferPostings(from, to, amount, symbol, cost)
+    if (amount.gt(0)) {
+      return this.getTransferPostings(from, to, amount, symbol, cost)
+    } else {
+      return []
+    }
   }
 
   getEtherTransferPostings(tx: BaseTx, amount: Big, cost: Cost, symbol = ETH_SYMBOL): Posting[] {
@@ -200,5 +205,15 @@ function getAccountName(address: string, accountType: AccountType, config: Confi
     return config.defaultExpense
   } else {
     throw new Error("unknown account name")
+  }
+}
+
+function getBlockNumber(combinedTx: TxCombined): string {
+  if (combinedTx.normalTx) {
+    return combinedTx.normalTx.blockNumber
+  } else if (combinedTx.internalTxs.length > 0) {
+    return combinedTx.internalTxs[0].blockNumber
+  } else {
+    return combinedTx.erc20Transfers[0].blockNumber
   }
 }

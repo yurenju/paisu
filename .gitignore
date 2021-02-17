@@ -1,3 +1,4 @@
 node_modules
 crypto.bean
 config-trezor.yaml
+*.cache

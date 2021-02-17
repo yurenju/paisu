@@ -2,23 +2,23 @@ import Big from "big.js"
 import Bottleneck from "bottleneck"
 import { DateTime } from "luxon"
 import fetch from "node-fetch"
+import { Cache } from "../util/cache"
 import { GetCoinInfoResponse } from "./coingecko_model"
 
+const defaultCache = Cache.load("coingecko.cache")
 const defaultLimiter = new Bottleneck({
-  minTime: 500,
+  minTime: 1000,
   maxConcurrent: 1,
 })
 export const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
 export const ETHEREUM_COIN_ID = "ethereum"
-
-type Cache = Record<string, any>
 
 export class CoinGecko {
   readonly baseUrl: string
   readonly limiter: Bottleneck
   cache: Cache
 
-  constructor(baseUrl = COINGECKO_BASE_URL, limiter = defaultLimiter, cache = {}) {
+  constructor(baseUrl = COINGECKO_BASE_URL, limiter = defaultLimiter, cache = defaultCache) {
     this.baseUrl = baseUrl
     this.limiter = limiter
     this.cache = cache
@@ -28,17 +28,20 @@ export class CoinGecko {
     const cacheKey = `getCoinInfo(${contractAddress})`
     const url = `${this.baseUrl}/coins/ethereum/contract/${contractAddress}`
 
-    const cached = this.cache[cacheKey]
+    const cached = this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return JSON.parse(cached) as GetCoinInfoResponse
     }
 
-    const result = (await this.limiter.schedule(() =>
-      fetch(url).then((res) => res.json())
-    )) as GetCoinInfoResponse
-
-    this.cache[cacheKey] = result
-    return result
+    const text = await this.limiter.schedule(() => fetch(url).then((res) => res.text()))
+    try {
+      const result = JSON.parse(text) as GetCoinInfoResponse
+      await this.cache.put(cacheKey, text)
+      return result
+    } catch (e) {
+      console.log(text)
+      throw e
+    }
   }
 
   async getHistoryPrice(coinId: string, date: DateTime): Promise<GetCoinInfoResponse> {
@@ -46,16 +49,20 @@ export class CoinGecko {
     const formattedDate = date.toFormat("dd-LL-yyyy")
     const url = `${this.baseUrl}/coins/${coinId}/history?date=${formattedDate}`
 
-    const cached = this.cache[cacheKey]
+    const cached = this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return JSON.parse(cached) as GetCoinInfoResponse
     }
 
     const text = await this.limiter.schedule(() => fetch(url).then((res) => res.text()))
-    const result = JSON.parse(text) as GetCoinInfoResponse
-
-    this.cache[cacheKey] = result
-    return result
+    try {
+      const result = JSON.parse(text) as GetCoinInfoResponse
+      await this.cache.put(cacheKey, text)
+      return result
+    } catch (e) {
+      console.log(text)
+      throw e
+    }
   }
 
   async getHistoryPriceByCurrency(coinId: string, date: DateTime, currency: string): Promise<Big> {
