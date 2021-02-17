@@ -15,5 +15,5 @@ export interface Config {
   txFeeAccount: string
   pnlAccount: string
   etherscan: EtherscanConfig
-  fromBlock: number
+  startBlock: number
 }

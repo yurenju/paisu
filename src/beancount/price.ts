@@ -8,12 +8,13 @@ import {
   DEFAULT_SYMBOL,
   Directive,
 } from "./directive"
+import { TokenSymbol } from "./token_symbol"
 
 export class Price extends Directive {
   date: DateTime = DEFAULT_DATE
   holding: string = DEFAULT_HOLDING
   amount: Big = DEFAULT_AMOUNT
-  symbol: string = DEFAULT_SYMBOL
+  symbol: TokenSymbol = DEFAULT_SYMBOL
 
   constructor(price?: Partial<Price>) {
     super()

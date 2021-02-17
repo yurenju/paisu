@@ -10,6 +10,7 @@ import {
   Erc20Transfer,
   Response,
   Status,
+  QueryProps,
 } from "./etherscan_model"
 
 const ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
@@ -30,50 +31,67 @@ export class Etherscan {
     this.limiter = limiter
   }
 
-  getNormalTransactions(address: string, sort = Sort.Asc): Promise<NormalTx[]> {
-    return this.query<NormalTx[]>(address, Module.Account, Action.TxList, sort)
+  getNormalTransactions(
+    address: string,
+    startBlock?: number,
+    sort = Sort.Asc
+  ): Promise<NormalTx[]> {
+    const { apiKey } = this
+    return this.query<NormalTx[]>({
+      apiKey,
+      address,
+      module: Module.Account,
+      action: Action.TxList,
+      sort,
+      startBlock,
+    })
   }
 
-  getInternalTransactions(address: string, sort = Sort.Asc): Promise<InternalTx[]> {
-    return this.query<InternalTx[]>(address, Module.Account, Action.TxListInternal, sort)
+  getInternalTransactions(
+    address: string,
+    startBlock?: number,
+    sort = Sort.Asc
+  ): Promise<InternalTx[]> {
+    const { apiKey } = this
+    return this.query<InternalTx[]>({
+      apiKey,
+      address,
+      module: Module.Account,
+      action: Action.TxListInternal,
+      sort,
+      startBlock,
+    })
   }
 
-  getErc20Transfers(address: string, sort = Sort.Asc): Promise<Erc20Transfer[]> {
-    return this.query<Erc20Transfer[]>(address, Module.Account, Action.TokenTx, sort)
+  getErc20Transfers(
+    address: string,
+    startBlock?: number,
+    sort = Sort.Asc
+  ): Promise<Erc20Transfer[]> {
+    const { apiKey } = this
+    return this.query<Erc20Transfer[]>({
+      apiKey,
+      address,
+      module: Module.Account,
+      action: Action.TokenTx,
+      sort,
+      startBlock,
+    })
   }
 
   getErc20Balance(accountAddress: string, contractAddress: string): Promise<string> {
-    return this.query<string>(
-      accountAddress,
-      Module.Account,
-      Action.TokenBalance,
-      undefined,
-      contractAddress
-    )
+    const { apiKey } = this
+    return this.query<string>({
+      apiKey,
+      address: accountAddress,
+      module: Module.Account,
+      action: Action.TokenBalance,
+      contractAddress,
+    })
   }
 
-  async query<T>(
-    address: string,
-    module: Module,
-    action: Action,
-    sort?: Sort,
-    contractAddress?: string
-  ): Promise<T> {
-    const { apiKey } = this
-    const parameters = new URLSearchParams({
-      module,
-      action,
-      address,
-      apiKey,
-    })
-
-    if (sort) {
-      parameters.append("sort", sort)
-    }
-    if (contractAddress) {
-      parameters.append("contractAddress", contractAddress)
-    }
-
+  async query<T>(props: QueryProps): Promise<T> {
+    const parameters = new URLSearchParams(props as any)
     const query = `${this.baseUrl}?${parameters.toString()}`
     const res = (await this.limiter.schedule(() =>
       fetch(query).then((res) => res.json())
@@ -90,12 +108,8 @@ export class Etherscan {
 }
 
 function getErrorMessage<T>(res: Response<T>): string {
-  if (res.status === Status.Failure) {
-    if (Array.isArray(res.result)) {
-      return res.message
-    } else {
-      return res.result as string
-    }
+  if (res.status === Status.Failure && !Array.isArray(res.result)) {
+    return res.result as string
   }
   return ""
 }

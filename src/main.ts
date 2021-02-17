@@ -18,9 +18,9 @@ async function main() {
   const transformer = new Transformer(coingecko, config)
   const account = config.accounts[0]
   console.log("getting transactions from etherscan...")
-  const txs = await etherscan.getNormalTransactions(account.address)
-  const erc20Transfers = await etherscan.getErc20Transfers(account.address)
-  const internalTxs = await etherscan.getInternalTransactions(account.address)
+  const txs = await etherscan.getNormalTransactions(account.address, config.startBlock)
+  const erc20Transfers = await etherscan.getErc20Transfers(account.address, config.startBlock)
+  const internalTxs = await etherscan.getInternalTransactions(account.address, config.startBlock)
   const combinedTxs = combineTxs(txs, internalTxs, erc20Transfers)
   const setupBeans: Directive[] = []
   const txBeans: Directive[] = []
@@ -29,7 +29,7 @@ async function main() {
 
   for (let i = 0; i < combinedTxs.length; i++) {
     const combinedTx = combinedTxs[i]
-    console.log(`processing ${i + 1}/${combinedTxs.length}...`)
+    console.log(`processing ${combinedTx.hash} - ${i + 1}/${combinedTxs.length}...`)
     const bean = await transformer.getTransaction(combinedTx)
     txBeans.push(bean)
   }

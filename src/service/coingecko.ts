@@ -51,9 +51,8 @@ export class CoinGecko {
       return cached
     }
 
-    const result = (await this.limiter.schedule(() =>
-      fetch(url).then((res) => res.json())
-    )) as GetCoinInfoResponse
+    const text = await this.limiter.schedule(() => fetch(url).then((res) => res.text()))
+    const result = JSON.parse(text) as GetCoinInfoResponse
 
     this.cache[cacheKey] = result
     return result

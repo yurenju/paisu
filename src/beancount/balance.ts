@@ -1,5 +1,6 @@
 import Big from "big.js"
 import { DateTime } from "luxon"
+import { TokenSymbol } from "."
 import { copyValues } from "../util/misc"
 import {
   Directive,
@@ -13,7 +14,7 @@ export class Balance extends Directive {
   date: DateTime = DEFAULT_DATE
   account: string = DEFAULT_ACCOUNT
   amount: Big = DEFAULT_AMOUNT
-  symbol: string = DEFAULT_SYMBOL
+  symbol: TokenSymbol = DEFAULT_SYMBOL
 
   constructor(balance?: Partial<Balance>) {
     super()

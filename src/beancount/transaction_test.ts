@@ -2,6 +2,7 @@ import Big from "big.js"
 import { expect } from "chai"
 import { DateTime } from "luxon"
 import { Posting } from "./posting"
+import { TokenSymbol } from "./token_symbol"
 import { Transaction } from "./transaction"
 
 describe("Transaction", () => {
@@ -19,8 +20,16 @@ describe("Transaction", () => {
       date: DateTime.fromISO("2012-02-01"),
       narration: "description",
       postings: [
-        new Posting({ account: "TestAccount1", amount: new Big("30.0"), symbol: "TWD" }),
-        new Posting({ account: "TestAccount2", amount: new Big("-30.0"), symbol: "TWD" }),
+        new Posting({
+          account: "TestAccount1",
+          amount: new Big("30.0"),
+          symbol: new TokenSymbol("TWD"),
+        }),
+        new Posting({
+          account: "TestAccount2",
+          amount: new Big("-30.0"),
+          symbol: new TokenSymbol("TWD"),
+        }),
       ],
     }
     const tx = new Transaction(json)

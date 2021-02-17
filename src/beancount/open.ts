@@ -1,6 +1,7 @@
 import { DateTime } from "luxon"
 import { copyValues } from "../util/misc"
-import { Directive, DEFAULT_SYMBOL, DEFAULT_ACCOUNT, DEFAULT_DATE } from "./directive"
+import { Directive, DEFAULT_ACCOUNT, DEFAULT_DATE } from "./directive"
+import { TokenSymbol } from "./token_symbol"
 
 export enum BookingMethod {
   FIFO = "FIFO",
@@ -10,7 +11,7 @@ export enum BookingMethod {
 export class Open extends Directive {
   date: DateTime = DEFAULT_DATE
   account: string = DEFAULT_ACCOUNT
-  symbol?: string
+  symbol?: TokenSymbol
   bookingMethod?: BookingMethod
 
   constructor(open?: Partial<Open>) {

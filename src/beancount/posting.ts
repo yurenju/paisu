@@ -1,6 +1,7 @@
 import Big from "big.js"
 import { copyValues } from "../util/misc"
 import { DEFAULT_SYMBOL, DEFAULT_ACCOUNT, DEFAULT_AMOUNT } from "./directive"
+import { TokenSymbol } from "./token_symbol"
 
 export enum PriceType {
   Unit = "unit",
@@ -9,7 +10,7 @@ export enum PriceType {
 
 export class Cost {
   amount: Big = DEFAULT_AMOUNT
-  symbol: string = DEFAULT_SYMBOL
+  symbol: TokenSymbol = DEFAULT_SYMBOL
   ambiguous: boolean = false
 
   constructor(cost: Partial<Cost>) {
@@ -22,7 +23,7 @@ export class Cost {
 export class PostingPrice {
   type: PriceType = PriceType.Unit
   amount: Big = DEFAULT_AMOUNT
-  symbol: string = DEFAULT_SYMBOL
+  symbol: TokenSymbol = DEFAULT_SYMBOL
 }
 
 export class Posting {
@@ -30,7 +31,7 @@ export class Posting {
 
   account: string = DEFAULT_ACCOUNT
   amount: Big = DEFAULT_AMOUNT
-  symbol: string = DEFAULT_SYMBOL
+  symbol: TokenSymbol = DEFAULT_SYMBOL
   metadata: Record<string, string> = {}
   cost?: Cost
   price?: PostingPrice

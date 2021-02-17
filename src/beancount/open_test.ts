@@ -1,18 +1,19 @@
 import { expect } from "chai"
 import { DateTime } from "luxon"
 import { BookingMethod, Open } from "."
+import { TokenSymbol } from "./token_symbol"
 
 describe("Open", () => {
   const options = {
     date: DateTime.fromISO("2020-03-11"),
-    symbol: "TWD",
+    symbol: new TokenSymbol("TWD"),
     account: "Asset:Bank:Detroit",
   }
 
   it("constructor", () => {
     const open = new Open(options)
     expect(open.date.toISODate()).eq("2020-03-11")
-    expect(open.symbol).eq("TWD")
+    expect(open.symbol?.toString()).eq("TWD")
     expect(open.account).eq("Asset:Bank:Detroit")
   })
 

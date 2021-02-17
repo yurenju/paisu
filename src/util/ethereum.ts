@@ -1,7 +1,8 @@
+import { TokenSymbol } from "../beancount"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
 
 export const ETH_DECIMALS = 18
-export const ETH_SYMBOL = "ETH"
+export const ETH_SYMBOL = new TokenSymbol("ETH")
 
 export interface TxCombined {
   hash: string

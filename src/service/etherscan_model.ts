@@ -64,3 +64,13 @@ export enum Action {
   TokenTx = "tokentx",
   TokenBalance = "tokenbalance",
 }
+
+export interface QueryProps {
+  apiKey: string
+  address: string
+  module: Module
+  action: Action
+  sort?: Sort
+  contractAddress?: string
+  startBlock?: number
+}

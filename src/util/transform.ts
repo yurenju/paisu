@@ -1,6 +1,15 @@
 import Big from "big.js"
 import { DateTime } from "luxon"
-import { Balance, BookingMethod, Cost, Directive, Open, Posting, Transaction } from "../beancount"
+import {
+  Balance,
+  BookingMethod,
+  Cost,
+  Directive,
+  Open,
+  Posting,
+  TokenSymbol,
+  Transaction,
+} from "../beancount"
 import { OperatingCurrency } from "../beancount/operating_currency"
 import { Account, Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
@@ -49,8 +58,10 @@ export class Transformer {
       DateTime.fromSeconds(combinedTx.timeStamp),
       this.config.baseCurrency
     )
-    const ethCost = new Cost({ symbol: this.config.baseCurrency, amount: ethCostPrice })
-    //TODO: Check if timestamp is string or number
+    const ethCost = new Cost({
+      symbol: new TokenSymbol(this.config.baseCurrency),
+      amount: ethCostPrice,
+    })
 
     // normal transaction
     if (combinedTx.normalTx) {
@@ -91,13 +102,13 @@ export class Transformer {
     const tokenInfos = Array.from(tokenMap.values())
     for (let i = 0; i < tokenInfos.length; i++) {
       const tokenInfo = tokenInfos[i]
-      console.log(`getting balance for ${tokenInfo.tokenSymbol}`)
+      console.log(`getting balance for ${tokenInfo.tokenSymbol} (${tokenInfo.contractAddress})`)
       const result = await etherscan.getErc20Balance(account.address, tokenInfo.contractAddress)
       balances.push(
         new Balance({
           account: account.name,
           amount: parseBigNumber(result, Number.parseInt(tokenInfo.tokenDecimal)),
-          symbol: tokenInfo.tokenSymbol.toUpperCase(),
+          symbol: new TokenSymbol(tokenInfo.tokenSymbol),
         })
       )
     }
@@ -126,7 +137,7 @@ export class Transformer {
     const from = getAccountName(transfer.from, AccountType.From, this.config)
     const to = getAccountName(transfer.to, AccountType.To, this.config)
     const amount = parseBigNumber(transfer.value, Number.parseInt(transfer.tokenDecimal))
-    const symbol = transfer.tokenSymbol.toUpperCase()
+    const symbol = new TokenSymbol(transfer.tokenSymbol)
     const date = DateTime.fromSeconds(Number.parseInt(transfer.timeStamp))
     const coinInfo = await this.coingecko.getCoinInfo(transfer.contractAddress)
     const costPrice = await this.coingecko.getHistoryPriceByCurrency(
@@ -134,7 +145,7 @@ export class Transformer {
       date,
       this.config.baseCurrency
     )
-    const cost = new Cost({ amount: costPrice, symbol: this.config.baseCurrency })
+    const cost = new Cost({ amount: costPrice, symbol: new TokenSymbol(this.config.baseCurrency) })
 
     return this.getTransferPostings(from, to, amount, symbol, cost)
   }
@@ -156,7 +167,7 @@ export class Transformer {
     fromAccount: string,
     toAccount: string,
     amount: Big,
-    symbol: string,
+    symbol: TokenSymbol,
     cost: Cost
   ): Posting[] {
     const fromPosting = new Posting({ account: fromAccount, amount: amount.mul(-1), symbol, cost })
