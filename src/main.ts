@@ -3,7 +3,7 @@ import { Config } from "./config"
 import { Etherscan } from "./service/etherscan"
 import { readFileSync, writeFile } from "fs"
 import { combineTxs } from "./util/ethereum"
-import { Transformer } from "./util/transform"
+import { getTokenInfosByTransfers, Transformer } from "./util/transform"
 import { promisify } from "util"
 import { CoinGecko } from "./service/coingecko"
 import { DateTime } from "luxon"
@@ -25,7 +25,6 @@ async function main() {
   const combinedTxs = combineTxs(txs, internalTxs, erc20Transfers)
   const setupBeans: Directive[] = []
   const txBeans: Directive[] = []
-  const balanceBeans: Directive[] = []
   setupBeans.push(...transformer.initBeans(DateTime.fromISO("2018-01-01")))
 
   for (let i = 0; i < combinedTxs.length; i++) {
@@ -35,10 +34,12 @@ async function main() {
     txBeans.push(bean)
   }
 
-  const balances = await transformer.getBalances(account, erc20Transfers, etherscan)
-  balanceBeans.push(...balances)
+  const tokenInfos = getTokenInfosByTransfers(erc20Transfers)
+  const balances = await transformer.getBalances(account, tokenInfos, etherscan)
 
-  const result = [setupBeans, txBeans, balanceBeans]
+  const prices = await transformer.getPrices(tokenInfos)
+
+  const result = [setupBeans, txBeans, balances, prices]
     .map((beans) => beans.map((bean) => bean.toString()).join("\n"))
     .join("\n\n")
   const write = promisify(writeFile)

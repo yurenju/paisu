@@ -11,6 +11,7 @@ import {
   Transaction,
 } from "../beancount"
 import { OperatingCurrency } from "../beancount/operating_currency"
+import { Price } from "../beancount/price"
 import { Account, Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
 import { Etherscan } from "../service/etherscan"
@@ -24,6 +25,12 @@ enum AccountType {
 }
 
 Big.NE = -8
+
+export interface TokenInfo {
+  address: string
+  symbol: TokenSymbol
+  decimal: number
+}
 
 export class Transformer {
   readonly coingecko: CoinGecko
@@ -94,15 +101,10 @@ export class Transformer {
 
   async getBalances(
     account: Account,
-    erc20Transfers: Erc20Transfer[],
+    tokenInfos: TokenInfo[],
     etherscan: Etherscan
   ): Promise<Balance[]> {
     const balances: Balance[] = []
-    const tokenMap = new Map<string, Erc20Transfer>()
-    erc20Transfers.forEach((transfer) => {
-      tokenMap.set(transfer.contractAddress, transfer)
-    })
-    const tokenInfos = Array.from(tokenMap.values())
     const ethBalanceAmount = await etherscan.getEthBalance(account.address)
     balances.push(
       new Balance({
@@ -113,18 +115,54 @@ export class Transformer {
     )
     for (let i = 0; i < tokenInfos.length; i++) {
       const tokenInfo = tokenInfos[i]
-      console.log(`getting balance for ${tokenInfo.tokenSymbol} (${tokenInfo.contractAddress})`)
-      const result = await etherscan.getErc20Balance(account.address, tokenInfo.contractAddress)
+      console.log(`getting balance for ${tokenInfo.symbol} (${tokenInfo.address})`)
+      const result = await etherscan.getErc20Balance(account.address, tokenInfo.address)
       balances.push(
         new Balance({
           account: account.name,
-          amount: parseBigNumber(result, Number.parseInt(tokenInfo.tokenDecimal)),
-          symbol: new TokenSymbol(tokenInfo.tokenSymbol),
+          amount: parseBigNumber(result, tokenInfo.decimal),
+          symbol: tokenInfo.symbol,
         })
       )
     }
 
     return balances
+  }
+
+  async getPrices(tokenInfos: TokenInfo[]): Promise<Price[]> {
+    const prices: Price[] = []
+    const baseCurrency = this.config.baseCurrency.toLowerCase()
+
+    const ethInfo = await this.coingecko.getCoinInfoById(ETHEREUM_COIN_ID)
+    prices.push(
+      new Price({
+        date: DateTime.local(),
+        holding: ETH_SYMBOL,
+        amount: new Big(ethInfo.market_data.current_price[baseCurrency]),
+        symbol: new TokenSymbol(baseCurrency),
+      })
+    )
+
+    for (let i = 0; i < tokenInfos.length; i++) {
+      const tokenInfo = tokenInfos[i]
+      console.log(`getting price for ${tokenInfo.symbol} (${tokenInfo.address})`)
+
+      try {
+        const result = await this.coingecko.getCoinInfoByContractAddress(tokenInfo.address)
+        prices.push(
+          new Price({
+            date: DateTime.local(),
+            holding: tokenInfo.symbol,
+            amount: new Big(result.market_data.current_price[baseCurrency]),
+            symbol: new TokenSymbol(baseCurrency),
+          })
+        )
+      } catch (e) {
+        //do nothing
+      }
+    }
+
+    return prices
   }
 
   async getNormalTxPostings(normalTx: NormalTx, cost: Cost): Promise<Posting[]> {
@@ -150,12 +188,19 @@ export class Transformer {
     const amount = parseBigNumber(transfer.value, Number.parseInt(transfer.tokenDecimal))
     const symbol = new TokenSymbol(transfer.tokenSymbol)
     const date = DateTime.fromSeconds(Number.parseInt(transfer.timeStamp))
-    const coinInfo = await this.coingecko.getCoinInfo(transfer.contractAddress)
-    const costPrice = await this.coingecko.getHistoryPriceByCurrency(
-      coinInfo.id,
-      date,
-      this.config.baseCurrency
-    )
+    let costPrice = new Big(0)
+
+    try {
+      const coinInfo = await this.coingecko.getCoinInfoByContractAddress(transfer.contractAddress)
+      costPrice = await this.coingecko.getHistoryPriceByCurrency(
+        coinInfo.id,
+        date,
+        this.config.baseCurrency
+      )
+    } catch (e) {
+      // keep costPrice 0
+    }
+
     const cost = new Cost({ amount: costPrice, symbol: new TokenSymbol(this.config.baseCurrency) })
 
     if (amount.gt(0)) {
@@ -226,4 +271,18 @@ function getBlockNumber(combinedTx: TxCombined): string {
   } else {
     return combinedTx.erc20Transfers[0].blockNumber
   }
+}
+
+export function getTokenInfosByTransfers(erc20Transfers: Erc20Transfer[]): TokenInfo[] {
+  const tokenMap = new Map<string, Erc20Transfer>()
+  erc20Transfers.forEach((transfer) => {
+    tokenMap.set(transfer.contractAddress, transfer)
+  })
+  return Array.from(tokenMap.values()).map((transfer) => {
+    return {
+      address: transfer.contractAddress,
+      symbol: new TokenSymbol(transfer.tokenSymbol),
+      decimal: Number.parseInt(transfer.tokenDecimal),
+    }
+  })
 }

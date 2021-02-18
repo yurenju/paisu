@@ -24,22 +24,35 @@ export class CoinGecko {
     this.cache = cache
   }
 
-  async getCoinInfo(contractAddress: string): Promise<GetCoinInfoResponse> {
-    const cacheKey = `getCoinInfo(${contractAddress})`
-    const url = `${this.baseUrl}/coins/ethereum/contract/${contractAddress}`
+  async getCoinInfoByContractAddress(contractAddress: string): Promise<GetCoinInfoResponse> {
+    const path = `/coins/ethereum/contract/${contractAddress}`
+    return this.getCoinInfo(path)
+  }
 
-    const cached = this.cache.get(cacheKey)
-    if (cached) {
-      return JSON.parse(cached) as GetCoinInfoResponse
+  async getCoinInfoById(coinId: string): Promise<GetCoinInfoResponse> {
+    const path = `/coins/${coinId}`
+    return this.getCoinInfo(path)
+  }
+
+  async getCoinInfo(path: string): Promise<GetCoinInfoResponse> {
+    const cacheKey = path
+    const url = `${this.baseUrl}${path}`
+
+    let text = this.cache.get(cacheKey)
+    if (!text) {
+      text = await this.limiter.schedule(() => fetch(url).then((res) => res.text()))
     }
 
-    const text = await this.limiter.schedule(() => fetch(url).then((res) => res.text()))
     try {
-      const result = JSON.parse(text) as GetCoinInfoResponse
+      const result = JSON.parse(text)
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
       await this.cache.put(cacheKey, text)
-      return result
+      return result as GetCoinInfoResponse
     } catch (e) {
-      console.log(text)
+      console.log(url, text)
       throw e
     }
   }

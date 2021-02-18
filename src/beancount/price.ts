@@ -12,7 +12,7 @@ import { TokenSymbol } from "./token_symbol"
 
 export class Price extends Directive {
   date: DateTime = DEFAULT_DATE
-  holding: string = DEFAULT_HOLDING
+  holding: TokenSymbol = DEFAULT_HOLDING
   amount: Big = DEFAULT_AMOUNT
   symbol: TokenSymbol = DEFAULT_SYMBOL
 
@@ -23,7 +23,7 @@ export class Price extends Directive {
     }
   }
 
-  toString() {
+  toString(): string {
     const { date, holding, amount, symbol } = this
     return `${date.toISODate()} price ${holding} ${amount} ${symbol}`
   }
