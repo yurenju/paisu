@@ -99,6 +99,16 @@ export class Etherscan {
     })
   }
 
+  getEthBalance(accountAddress: string): Promise<string> {
+    const { apiKey } = this
+    return this.query<string>({
+      apiKey,
+      address: accountAddress,
+      module: Module.Account,
+      action: Action.Balance,
+    })
+  }
+
   async query<T>(props: QueryProps): Promise<T> {
     const parameters = new URLSearchParams(props as any).toString()
     const cached = this.cache.get(parameters)

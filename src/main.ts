@@ -10,7 +10,8 @@ import { DateTime } from "luxon"
 import { Directive } from "./beancount"
 
 async function main() {
-  const configFile = readFileSync("./sample/config.yaml", { encoding: "utf-8" })
+  console.log(process.argv)
+  const configFile = readFileSync(process.argv[2], { encoding: "utf-8" })
   const config = yaml.load(configFile) as Config
 
   const etherscan = new Etherscan(config.etherscan.apiKey)

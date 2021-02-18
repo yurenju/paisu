@@ -63,6 +63,7 @@ export enum Action {
   TxListInternal = "txlistinternal",
   TokenTx = "tokentx",
   TokenBalance = "tokenbalance",
+  Balance = "balance",
 }
 
 export interface QueryProps {

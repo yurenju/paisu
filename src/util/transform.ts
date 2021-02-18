@@ -23,6 +23,8 @@ enum AccountType {
   To = "to",
 }
 
+Big.NE = -8
+
 export class Transformer {
   readonly coingecko: CoinGecko
   readonly config: Config
@@ -101,6 +103,14 @@ export class Transformer {
       tokenMap.set(transfer.contractAddress, transfer)
     })
     const tokenInfos = Array.from(tokenMap.values())
+    const ethBalanceAmount = await etherscan.getEthBalance(account.address)
+    balances.push(
+      new Balance({
+        account: account.name,
+        amount: parseBigNumber(ethBalanceAmount),
+        symbol: ETH_SYMBOL,
+      })
+    )
     for (let i = 0; i < tokenInfos.length; i++) {
       const tokenInfo = tokenInfos[i]
       console.log(`getting balance for ${tokenInfo.tokenSymbol} (${tokenInfo.contractAddress})`)
