@@ -63,6 +63,7 @@ export class Transformer {
     const metadata = { hash, blockNumber }
     const date = DateTime.fromSeconds(combinedTx.timeStamp)
     const beanTx = new Transaction({ date, metadata })
+    const exchange = isExchange(combinedTx, this.config)
     const ethCostPrice = await this.coingecko.getHistoryPriceByCurrency(
       ETHEREUM_COIN_ID,
       DateTime.fromSeconds(combinedTx.timeStamp),
@@ -95,6 +96,17 @@ export class Transformer {
 
     // add pnl account for balancing
     beanTx.postings.push(new Posting({ account: this.config.pnlAccount }))
+
+    // if the transaction is for token exchange, remove default income & expense
+    // to keep cost is align
+    if (exchange) {
+      const filtered = beanTx.postings.filter(
+        (posting) =>
+          posting.account !== this.config.defaultExpense &&
+          posting.account !== this.config.defaultIncome
+      )
+      beanTx.postings = filtered
+    }
 
     return beanTx
   }
@@ -251,7 +263,7 @@ function compareAddress(addr1: string, addr2: string): boolean {
 }
 
 function getAccountName(address: string, accountType: AccountType, config: Config): string {
-  const account = config.accounts.find((acc) => compareAddress(acc.address, address.toLowerCase()))
+  const account = config.accounts.find((acc) => compareAddress(acc.address, address))
   if (account) {
     return account.name
   } else if (accountType === AccountType.From) {
@@ -285,4 +297,30 @@ export function getTokenInfosByTransfers(erc20Transfers: Erc20Transfer[]): Token
       decimal: Number.parseInt(transfer.tokenDecimal),
     }
   })
+}
+
+export function isAsset(address: string, accountType: AccountType, config: Config): boolean {
+  return getAccountName(address, accountType, config).startsWith("Assets")
+}
+
+export function isExchange(combinedTx: TxCombined, config: Config): boolean {
+  let fromAsset = false
+  let toAsset = false
+
+  function checkAsset(from: string, to: string) {
+    if (isAsset(from, AccountType.From, config)) {
+      fromAsset = true
+    }
+    if (isAsset(to, AccountType.To, config)) {
+      toAsset = true
+    }
+  }
+
+  if (combinedTx.normalTx) {
+    checkAsset(combinedTx.normalTx.from, combinedTx.normalTx.to)
+  }
+  combinedTx.erc20Transfers.forEach((tx) => checkAsset(tx.from, tx.to))
+  combinedTx.internalTxs.forEach((tx) => checkAsset(tx.from, tx.to))
+
+  return fromAsset && toAsset
 }
