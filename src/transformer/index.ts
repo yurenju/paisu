@@ -6,6 +6,7 @@ import { Middleware } from "../middleware"
 import { RegularMiddleware } from "../middleware/regular"
 import { SynthetixMiddle } from "../middleware/snx"
 import { TxFeeMiddleware } from "../middleware/txfee"
+import { WethMiddleware } from "../middleware/weth"
 import { CoinGecko } from "../service/coingecko"
 import { Etherscan } from "../service/etherscan"
 import { Erc20Transfer } from "../service/etherscan_model"
@@ -28,6 +29,7 @@ export class Transformer {
     this.middleware = [
       new TxFeeMiddleware(coingecko, config),
       new SynthetixMiddle(),
+      new WethMiddleware(coingecko, config),
       new RegularMiddleware(coingecko, etherscan, config),
     ]
   }
