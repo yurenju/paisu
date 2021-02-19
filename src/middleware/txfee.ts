@@ -1,19 +1,12 @@
 import { DateTime } from "luxon"
 import { Middleware } from "."
 import { Cost, Directive, Open, Posting, TokenSymbol, Transaction } from "../beancount"
-import { Price } from "../beancount/price"
 import { Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
-import { NormalTx } from "../service/etherscan_model"
+import { Erc20Transfer, NormalTx } from "../service/etherscan_model"
 import { ETH_SYMBOL, TxCombined } from "../util/ethereum"
 import { parseBigNumber } from "../util/misc"
-import {
-  AccountType,
-  findAccount,
-  getAccountName,
-  getTransferPostings,
-  TokenInfo,
-} from "../util/transform"
+import { AccountType, findAccount, getAccountName, getTransferPostings } from "../util/transform"
 
 export class TxFeeMiddleware implements Middleware {
   config: Config
@@ -45,7 +38,7 @@ export class TxFeeMiddleware implements Middleware {
     }
   }
 
-  processMarketPrices(tokenInfos: TokenInfo[], prices: Price[]): Promise<void> {
+  processCurrentStatus(erc20Transfers: Erc20Transfer[], directives: Directive[]): Promise<void> {
     // no implementation
     return Promise.resolve()
   }

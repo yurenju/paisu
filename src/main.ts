@@ -6,9 +6,9 @@ import { Directive } from "./beancount"
 import { Config } from "./config"
 import { CoinGecko } from "./service/coingecko"
 import { Etherscan } from "./service/etherscan"
+import { Erc20Transfer, InternalTx, NormalTx } from "./service/etherscan_model"
 import { Transformer } from "./transformer"
 import { combineTxs } from "./util/ethereum"
-import { getTokenInfosByTransfers } from "./util/transform"
 
 async function main() {
   console.log(process.argv)
@@ -17,13 +17,23 @@ async function main() {
 
   const etherscan = new Etherscan(config.etherscan.apiKey)
   const coingecko = new CoinGecko()
-  const transformer = new Transformer(coingecko, config)
+  const transformer = new Transformer(coingecko, etherscan, config)
   const account = config.accounts[0]
   console.log("getting transactions from etherscan...")
-  const txs = await etherscan.getNormalTransactions(account.address, config.startBlock)
-  const erc20Transfers = await etherscan.getErc20Transfers(account.address, config.startBlock)
-  const internalTxs = await etherscan.getInternalTransactions(account.address, config.startBlock)
-  const combinedTxs = combineTxs(txs, internalTxs, erc20Transfers)
+  const normalTxs: NormalTx[] = []
+  const erc20Transfers: Erc20Transfer[] = []
+  const internalTxs: InternalTx[] = []
+
+  for (let i = 0; i < config.accounts.length; i++) {
+    const account = config.accounts[i]
+    normalTxs.push(...(await etherscan.getNormalTransactions(account.address, config.startBlock)))
+    erc20Transfers.push(...(await etherscan.getErc20Transfers(account.address, config.startBlock)))
+    internalTxs.push(
+      ...(await etherscan.getInternalTransactions(account.address, config.startBlock))
+    )
+  }
+
+  const combinedTxs = combineTxs(normalTxs, internalTxs, erc20Transfers)
   const setupBeans: Directive[] = []
   const txBeans: Directive[] = []
   setupBeans.push(...transformer.initBeans(DateTime.fromISO("2018-01-01")))
@@ -35,12 +45,9 @@ async function main() {
     txBeans.push(bean)
   }
 
-  const tokenInfos = getTokenInfosByTransfers(erc20Transfers)
-  const balances = await transformer.getBalances(account, tokenInfos, etherscan)
+  const statusBeans = await transformer.getCurrentStatus(erc20Transfers)
 
-  const prices = await transformer.getPrices(tokenInfos)
-
-  const result = [setupBeans, txBeans, balances, prices]
+  const result = [setupBeans, txBeans, statusBeans]
     .map((beans) => beans.map((bean) => bean.toString()).join("\n"))
     .join("\n\n")
   const write = promisify(writeFile)

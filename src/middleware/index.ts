@@ -1,11 +1,10 @@
 import { DateTime } from "luxon"
 import { Directive, Transaction } from "../beancount"
-import { Price } from "../beancount/price"
+import { Erc20Transfer } from "../service/etherscan_model"
 import { TxCombined } from "../util/ethereum"
-import { TokenInfo } from "../util/transform"
 
 export interface Middleware {
   init(date: DateTime, directives: Directive[]): void
   processTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void>
-  processMarketPrices(tokenInfos: TokenInfo[], prices: Price[]): Promise<void>
+  processCurrentStatus(transfers: Erc20Transfer[], directives: Directive[]): Promise<void>
 }
