@@ -1,13 +1,14 @@
-import yaml from "js-yaml"
-import { Config } from "./config"
-import { Etherscan } from "./service/etherscan"
 import { readFileSync, writeFile } from "fs"
-import { combineTxs } from "./util/ethereum"
-import { getTokenInfosByTransfers, Transformer } from "./util/transform"
-import { promisify } from "util"
-import { CoinGecko } from "./service/coingecko"
+import yaml from "js-yaml"
 import { DateTime } from "luxon"
+import { promisify } from "util"
 import { Directive } from "./beancount"
+import { Config } from "./config"
+import { CoinGecko } from "./service/coingecko"
+import { Etherscan } from "./service/etherscan"
+import { Transformer } from "./transformer"
+import { combineTxs } from "./util/ethereum"
+import { getTokenInfosByTransfers } from "./util/transform"
 
 async function main() {
   console.log(process.argv)

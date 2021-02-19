@@ -1,4 +1,4 @@
-import { TokenSymbol } from "../beancount"
+import { TokenSymbol } from "../beancount/token_symbol"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
 
 export const ETH_DECIMALS = 18
