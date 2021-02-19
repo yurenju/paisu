@@ -4,6 +4,7 @@ import { Directive, Transaction } from "../beancount"
 import { Config } from "../config"
 import { Middleware } from "../middleware"
 import { RegularMiddleware } from "../middleware/regular"
+import { SynthetixMiddle } from "../middleware/snx"
 import { TxFeeMiddleware } from "../middleware/txfee"
 import { CoinGecko } from "../service/coingecko"
 import { Etherscan } from "../service/etherscan"
@@ -26,6 +27,7 @@ export class Transformer {
 
     this.middleware = [
       new TxFeeMiddleware(coingecko, config),
+      new SynthetixMiddle(),
       new RegularMiddleware(coingecko, etherscan, config),
     ]
   }
