@@ -32,36 +32,39 @@ export class WethMiddleware implements Middleware {
       amount: ethCostPrice,
     })
 
-    if (combinedTx.normalTx && compareAddress(combinedTx.normalTx.to, this.contractAddress)) {
-      for (let i = 0; i < combinedTx.internalTxs.length; i++) {
-        const internalTx = combinedTx.internalTxs[i]
+    if (!combinedTx.normalTx || !compareAddress(combinedTx.normalTx.to, this.contractAddress)) {
+      return
+    }
 
-        const from = findAccount(this.config.accounts, internalTx.from)
-        const to = findAccount(this.config.accounts, internalTx.to)
+    for (let i = 0; i < combinedTx.internalTxs.length; i++) {
+      const internalTx = combinedTx.internalTxs[i]
 
-        //wrap
-        if (from) {
-          beanTx.postings.push(
-            new Posting({
-              account: from.name,
-              amount: parseBigNumber(internalTx.value),
-              symbol: wethSymbol,
-              cost: ethCost,
-            })
-          )
-        }
+      const from = findAccount(this.config.accounts, internalTx.from)
+      const to = findAccount(this.config.accounts, internalTx.to)
+      let posting: Posting | undefined
 
-        //unwrap
-        if (to) {
-          beanTx.postings.push(
-            new Posting({
-              account: to.name,
-              amount: parseBigNumber(internalTx.value).mul(-1),
-              symbol: wethSymbol,
-              cost: new Cost({ ambiguous: true }),
-            })
-          )
-        }
+      //wrap
+      if (from) {
+        posting = new Posting({
+          account: from.name,
+          amount: parseBigNumber(internalTx.value),
+          symbol: wethSymbol,
+          cost: ethCost,
+        })
+      }
+
+      //unwrap
+      if (to) {
+        posting = new Posting({
+          account: to.name,
+          amount: parseBigNumber(internalTx.value).mul(-1),
+          symbol: wethSymbol,
+          cost: new Cost({ ambiguous: true }),
+        })
+      }
+
+      if (posting) {
+        beanTx.postings.push(posting)
       }
     }
   }
