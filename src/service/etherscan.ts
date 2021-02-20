@@ -97,30 +97,36 @@ export class Etherscan {
 
   getErc20Balance(accountAddress: string, contractAddress: string): Promise<string> {
     const { apiKey } = this
-    return this.query<string>({
-      apiKey,
-      address: accountAddress,
-      module: Module.Account,
-      action: Action.TokenBalance,
-      contractAddress,
-    })
+    return this.query<string>(
+      {
+        apiKey,
+        address: accountAddress,
+        module: Module.Account,
+        action: Action.TokenBalance,
+        contractAddress,
+      },
+      true
+    )
   }
 
   getEthBalance(accountAddress: string): Promise<string> {
     const { apiKey } = this
-    return this.query<string>({
-      apiKey,
-      address: accountAddress,
-      module: Module.Account,
-      action: Action.Balance,
-    })
+    return this.query<string>(
+      {
+        apiKey,
+        address: accountAddress,
+        module: Module.Account,
+        action: Action.Balance,
+      },
+      true
+    )
   }
 
-  async query<T>(props: QueryProps): Promise<T> {
+  async query<T>(props: QueryProps, noCache = false): Promise<T> {
     const parameters = new URLSearchParams(props as any).toString()
     const cached = this.cache.get(parameters)
 
-    if (!cached) {
+    if (!cached || noCache) {
       const query = `${this.baseUrl}?${parameters}`
       const res = (await this.limiter.schedule(() =>
         fetch(query).then((res) => res.json())
