@@ -71,6 +71,7 @@ export interface QueryProps {
   address: string
   module: Module
   action: Action
+  offset?: number
   sort?: Sort
   contractAddress?: string
   startBlock?: number

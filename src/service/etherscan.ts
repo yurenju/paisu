@@ -1,20 +1,21 @@
-import fetch from "node-fetch"
 import Bottleneck from "bottleneck"
+import fetch from "node-fetch"
 import { URLSearchParams } from "url"
-import {
-  Sort,
-  NormalTx,
-  Module,
-  Action,
-  InternalTx,
-  Erc20Transfer,
-  Response,
-  Status,
-  QueryProps,
-} from "./etherscan_model"
 import { Cache } from "../util/cache"
+import {
+  Action,
+  Erc20Transfer,
+  InternalTx,
+  Module,
+  NormalTx,
+  QueryProps,
+  Response,
+  Sort,
+  Status,
+} from "./etherscan_model"
 
 const ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
+const DEFAULT_OFFSET = 10000
 
 const defaultCache = Cache.load("etherscan.cache")
 const defaultLimiter = new Bottleneck({
@@ -43,7 +44,8 @@ export class Etherscan {
   getNormalTransactions(
     address: string,
     startBlock?: number,
-    sort = Sort.Asc
+    sort = Sort.Asc,
+    offset = DEFAULT_OFFSET
   ): Promise<NormalTx[]> {
     const { apiKey } = this
     return this.query<NormalTx[]>({
@@ -52,6 +54,7 @@ export class Etherscan {
       module: Module.Account,
       action: Action.TxList,
       sort,
+      offset,
       startBlock,
     })
   }
@@ -59,7 +62,8 @@ export class Etherscan {
   getInternalTransactions(
     address: string,
     startBlock?: number,
-    sort = Sort.Asc
+    sort = Sort.Asc,
+    offset = DEFAULT_OFFSET
   ): Promise<InternalTx[]> {
     const { apiKey } = this
     return this.query<InternalTx[]>({
@@ -68,6 +72,7 @@ export class Etherscan {
       module: Module.Account,
       action: Action.TxListInternal,
       sort,
+      offset,
       startBlock,
     })
   }
@@ -75,7 +80,8 @@ export class Etherscan {
   getErc20Transfers(
     address: string,
     startBlock?: number,
-    sort = Sort.Asc
+    sort = Sort.Asc,
+    offset = DEFAULT_OFFSET
   ): Promise<Erc20Transfer[]> {
     const { apiKey } = this
     return this.query<Erc20Transfer[]>({
@@ -84,6 +90,7 @@ export class Etherscan {
       module: Module.Account,
       action: Action.TokenTx,
       sort,
+      offset,
       startBlock,
     })
   }
