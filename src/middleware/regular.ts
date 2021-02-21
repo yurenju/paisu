@@ -1,22 +1,13 @@
 import Big from "big.js"
 import { DateTime } from "luxon"
-import { Middleware } from "."
-import {
-  Balance,
-  BookingMethod,
-  Cost,
-  Directive,
-  Open,
-  Posting,
-  TokenSymbol,
-  Transaction,
-} from "../beancount"
-import { OperatingCurrency } from "../beancount/operating_currency"
+import { Middleware, RoastedResult } from "."
+import { Balance, BookingMethod, Cost, Open, Posting, TokenSymbol, Transaction } from "../beancount"
+import { Option } from "../beancount/option"
 import { Price } from "../beancount/price"
 import { Account, Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
 import { Etherscan } from "../service/etherscan"
-import { BaseTx, Erc20Transfer, NormalTx } from "../service/etherscan_model"
+import { BaseTx, Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
 import { ETH_SYMBOL, TxCombined } from "../util/ethereum"
 import { parseBigNumber } from "../util/misc"
 import {
@@ -39,9 +30,21 @@ export class RegularMiddleware implements Middleware {
     this.config = config
   }
 
-  init(date: DateTime, directives: Directive[]): void {
-    directives.push(
-      new OperatingCurrency(this.config.baseCurrency),
+  async roastRestBeans(
+    date: DateTime,
+    combinedTxs: TxCombined[],
+    normalTxs: NormalTx[],
+    internalTxs: InternalTx[],
+    erc20Transfers: Erc20Transfer[],
+    result: RoastedResult
+  ): Promise<void> {
+    this.init(date, result)
+    await this.processBalancesAndPrices(erc20Transfers, result)
+  }
+
+  init(date: DateTime, result: RoastedResult): void {
+    result.options.push(new Option("operating_currency", this.config.baseCurrency))
+    result.opens.push(
       ...this.config.accounts.map(
         (account) => new Open({ date, account: account.name, bookingMethod: BookingMethod.FIFO })
       ),
@@ -50,7 +53,8 @@ export class RegularMiddleware implements Middleware {
       new Open({ date, account: this.config.pnlAccount })
     )
   }
-  async processTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void> {
+
+  async roastTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void> {
     const exchange = isExchange(combinedTx, this.config)
     const ethCostPrice = await this.coingecko.getHistoryPriceByCurrency(
       ETHEREUM_COIN_ID,
@@ -97,19 +101,19 @@ export class RegularMiddleware implements Middleware {
     }
   }
 
-  async processCurrentStatus(
+  async processBalancesAndPrices(
     erc20Transfers: Erc20Transfer[],
-    directives: Directive[]
+    result: RoastedResult
   ): Promise<void> {
     const tokenInfos = getTokenInfosByTransfers(erc20Transfers)
 
     for (let i = 0; i < this.config.accounts.length; i++) {
       const account = this.config.accounts[i]
       const balances = await this.getBalances(account, tokenInfos)
-      directives.push(...balances)
+      result.balances.push(...balances)
     }
 
-    directives.push(...(await this.getPrices(tokenInfos)))
+    result.prices.push(...(await this.getPrices(tokenInfos)))
   }
 
   async getNormalTxPostings(normalTx: NormalTx, cost: Cost): Promise<Posting[]> {

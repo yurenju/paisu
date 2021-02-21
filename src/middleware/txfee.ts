@@ -1,9 +1,9 @@
 import { DateTime } from "luxon"
-import { Middleware } from "."
-import { Cost, Directive, Open, Posting, TokenSymbol, Transaction } from "../beancount"
+import { Middleware, RoastedResult } from "."
+import { Cost, Open, Posting, TokenSymbol, Transaction } from "../beancount"
 import { Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
-import { Erc20Transfer, NormalTx } from "../service/etherscan_model"
+import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
 import { ETH_SYMBOL, TxCombined } from "../util/ethereum"
 import { parseBigNumber } from "../util/misc"
 import { AccountType, findAccount, getAccountName, getTransferPostings } from "../util/transform"
@@ -17,11 +17,18 @@ export class TxFeeMiddleware implements Middleware {
     this.config = config
   }
 
-  init(date: DateTime, directives: Directive[]): void {
-    directives.push(new Open({ date, account: this.config.txFeeAccount }))
+  async roastRestBeans(
+    date: DateTime,
+    combinedTxs: TxCombined[],
+    normalTxs: NormalTx[],
+    internalTxs: InternalTx[],
+    erc20Transfers: Erc20Transfer[],
+    result: RoastedResult
+  ): Promise<void> {
+    result.opens.push(new Open({ date, account: this.config.txFeeAccount }))
   }
 
-  async processTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void> {
+  async roastTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void> {
     const ethCostPrice = await this.coingecko.getHistoryPriceByCurrency(
       ETHEREUM_COIN_ID,
       DateTime.fromSeconds(combinedTx.timeStamp),
@@ -36,11 +43,6 @@ export class TxFeeMiddleware implements Middleware {
     if (combinedTx.normalTx && findAccount(this.config.accounts, combinedTx.normalTx.from)) {
       beanTx.postings.push(...this.getTxFeePostings(combinedTx.normalTx, ethCost))
     }
-  }
-
-  processCurrentStatus(erc20Transfers: Erc20Transfer[], directives: Directive[]): Promise<void> {
-    // no implementation
-    return Promise.resolve()
   }
 
   getTxFeePostings(normalTx: NormalTx, cost: Cost, symbol = ETH_SYMBOL): Posting[] {

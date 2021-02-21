@@ -1,9 +1,9 @@
 import { DateTime } from "luxon"
-import { Middleware } from "."
-import { Cost, Directive, Posting, TokenSymbol, Transaction } from "../beancount"
+import { Middleware, RoastedResult } from "."
+import { Cost, Posting, TokenSymbol, Transaction } from "../beancount"
 import { Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
-import { Erc20Transfer } from "../service/etherscan_model"
+import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
 import { TxCombined } from "../util/ethereum"
 import { parseBigNumber } from "../util/misc"
 import { compareAddress, findAccount } from "../util/transform"
@@ -18,9 +18,18 @@ export class WethMiddleware implements Middleware {
     this.coingecko = coingecko
   }
 
-  init(date: DateTime, directives: Directive[]): void {}
+  roastRestBeans(
+    date: DateTime,
+    combinedTxs: TxCombined[],
+    normalTxs: NormalTx[],
+    internalTxs: InternalTx[],
+    erc20Transfers: Erc20Transfer[],
+    result: RoastedResult
+  ): Promise<void> {
+    return Promise.resolve()
+  }
 
-  async processTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void> {
+  async roastTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void> {
     const wethSymbol = new TokenSymbol("WETH")
     const ethCostPrice = await this.coingecko.getHistoryPriceByCurrency(
       ETHEREUM_COIN_ID,
@@ -67,9 +76,5 @@ export class WethMiddleware implements Middleware {
         beanTx.postings.push(posting)
       }
     }
-  }
-
-  processCurrentStatus(transfers: Erc20Transfer[], directives: Directive[]): Promise<void> {
-    return Promise.resolve()
   }
 }

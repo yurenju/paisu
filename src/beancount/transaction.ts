@@ -44,6 +44,6 @@ export class Transaction extends Directive {
       lines.push(...postings.map((posting) => posting.toString()))
     }
 
-    return lines.join("\n") + "\n"
+    return lines.join("\n")
   }
 }

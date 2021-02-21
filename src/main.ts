@@ -36,22 +36,24 @@ async function main() {
   const combinedTxs = combineTxs(normalTxs, internalTxs, erc20Transfers)
   const setupBeans: Directive[] = []
   const txBeans: Directive[] = []
-  setupBeans.push(...transformer.initBeans(DateTime.fromISO("2018-01-01")))
+  const result = await transformer.roastBeans(
+    DateTime.fromISO("2018-01-01"),
+    combinedTxs,
+    normalTxs,
+    internalTxs,
+    erc20Transfers
+  )
 
-  for (let i = 0; i < combinedTxs.length; i++) {
-    const combinedTx = combinedTxs[i]
-    console.log(`processing ${combinedTx.hash} - ${i + 1}/${combinedTxs.length}...`)
-    const bean = await transformer.getTransaction(combinedTx)
-    txBeans.push(bean)
-  }
+  let output: string[] = [
+    result.options.map((option) => option.toString()).join("\n"),
+    result.opens.map((open) => open.toString()).join("\n"),
+    result.transactions.map((tx) => tx.toString()).join("\n\n"),
+    result.balances.map((balance) => balance.toString()).join("\n"),
+    result.prices.map((price) => price.toString()).join("\n"),
+  ]
 
-  const statusBeans = await transformer.getCurrentStatus(erc20Transfers)
-
-  const result = [setupBeans, txBeans, statusBeans]
-    .map((beans) => beans.map((bean) => bean.toString()).join("\n"))
-    .join("\n\n")
   const write = promisify(writeFile)
-  await write("crypto.bean", result, "utf8")
+  await write("crypto.bean", output.join("\n\n"), "utf8")
 }
 
 main()
