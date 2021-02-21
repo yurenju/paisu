@@ -34,6 +34,7 @@
   "dependencies": {
     "big.js": "6.0.3",
     "bottleneck": "2.19.5",
+    "ethers": "5.0.31",
     "js-yaml": "3.14.0",
     "luxon": "1.25.0",
     "node-fetch": "2.6.1"

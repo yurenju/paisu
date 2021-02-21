@@ -6,6 +6,7 @@ import { Middleware, RoastedResult } from "../middleware"
 import { RegularMiddleware } from "../middleware/regular"
 import { SynthetixMiddle } from "../middleware/snx"
 import { TxFeeMiddleware } from "../middleware/txfee"
+import { UniswapMiddleware } from "../middleware/uniswap"
 import { WethMiddleware } from "../middleware/weth"
 import { CoinGecko } from "../service/coingecko"
 import { Etherscan } from "../service/etherscan"
@@ -28,6 +29,7 @@ export class Transformer {
 
     this.middleware = [
       new TxFeeMiddleware(coingecko, config),
+      new UniswapMiddleware(coingecko, config),
       new SynthetixMiddle(),
       new WethMiddleware(coingecko, config),
       new RegularMiddleware(coingecko, etherscan, config),
@@ -69,6 +71,9 @@ export class Transformer {
       prices: [],
     }
 
+    const txs = await this.roastTransactions(combinedTxs)
+    result.transactions = txs
+
     for (let i = 0; i < this.middleware.length; i++) {
       const middleware = this.middleware[i]
       await middleware.roastRestBeans(
@@ -80,9 +85,6 @@ export class Transformer {
         result
       )
     }
-
-    const txs = await this.roastTransactions(combinedTxs)
-    result.transactions = txs
 
     return result
   }

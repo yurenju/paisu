@@ -2,7 +2,6 @@ import { readFileSync, writeFile } from "fs"
 import yaml from "js-yaml"
 import { DateTime } from "luxon"
 import { promisify } from "util"
-import { Directive } from "./beancount"
 import { Config } from "./config"
 import { CoinGecko } from "./service/coingecko"
 import { Etherscan } from "./service/etherscan"
@@ -18,7 +17,6 @@ async function main() {
   const etherscan = new Etherscan(config.etherscan.apiKey)
   const coingecko = new CoinGecko()
   const transformer = new Transformer(coingecko, etherscan, config)
-  const account = config.accounts[0]
   console.log("getting transactions from etherscan...")
   const normalTxs: NormalTx[] = []
   const erc20Transfers: Erc20Transfer[] = []
@@ -34,8 +32,6 @@ async function main() {
   }
 
   const combinedTxs = combineTxs(normalTxs, internalTxs, erc20Transfers)
-  const setupBeans: Directive[] = []
-  const txBeans: Directive[] = []
   const result = await transformer.roastBeans(
     DateTime.fromISO("2018-01-01"),
     combinedTxs,
