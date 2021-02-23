@@ -87,4 +87,13 @@ export class CoinGecko {
       return new Big(0)
     }
   }
+
+  async getHistoryPriceByContractAddress(
+    contractAddress: string,
+    date: DateTime,
+    currency: string
+  ): Promise<Big> {
+    const coinInfo = await this.getCoinInfoByContractAddress(contractAddress)
+    return await this.getHistoryPriceByCurrency(coinInfo.id, date, currency)
+  }
 }

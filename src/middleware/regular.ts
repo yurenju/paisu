@@ -137,9 +137,8 @@ export class RegularMiddleware implements Middleware {
     let costPrice = new Big(0)
 
     try {
-      const coinInfo = await this.coingecko.getCoinInfoByContractAddress(transfer.contractAddress)
-      costPrice = await this.coingecko.getHistoryPriceByCurrency(
-        coinInfo.id,
+      costPrice = await this.coingecko.getHistoryPriceByContractAddress(
+        transfer.contractAddress,
         date,
         this.config.baseCurrency
       )

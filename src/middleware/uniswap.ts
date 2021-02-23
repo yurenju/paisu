@@ -1,17 +1,26 @@
+import Big from "big.js"
+import { Contract, getDefaultProvider } from "ethers"
 import { Interface } from "ethers/lib/utils"
 import { DateTime } from "luxon"
 import { Middleware, RoastedResult } from "."
 import { Cost, Posting, TokenSymbol, Transaction } from "../beancount"
+import { Price } from "../beancount/price"
 import { Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
 import { TxCombined } from "../util/ethereum"
 import { parseBigNumber } from "../util/misc"
-import { AccountType, compareAddress, getAccountName } from "../util/transform"
-import { UNISWAP_ROUTER_ABI } from "./uniswap_abi"
+import {
+  AccountType,
+  compareAddress,
+  getAccountName,
+  getTokenInfosByTransfers,
+  TokenInfo,
+} from "../util/transform"
+import { ERC20_ABI, UNISWAP_LIQUIDITY_ABI, UNISWAP_ROUTER_ABI } from "./uniswap_abi"
 
 interface LiquidityTokens {
-  [contractAddress: string]: string
+  [contractAddress: string]: TokenSymbol
 }
 
 enum LiquidityAction {
@@ -100,7 +109,7 @@ export class UniswapMiddleware implements Middleware {
     return Promise.resolve()
   }
 
-  roastRestBeans(
+  async roastRestBeans(
     date: DateTime,
     combinedTxs: TxCombined[],
     normalTxs: NormalTx[],
@@ -108,6 +117,26 @@ export class UniswapMiddleware implements Middleware {
     erc20Transfers: Erc20Transfer[],
     result: RoastedResult
   ): Promise<void> {
+    const tokenInfos = getTokenInfosByTransfers(erc20Transfers)
+    for (let i = 0; i < tokenInfos.length; i++) {
+      const tokenInfo = tokenInfos[i]
+      if (this.liquidityTokens[tokenInfo.address]) {
+        const holding = this.liquidityTokens[tokenInfo.address]
+        const amount = await getLiquidityTokenPrice(
+          tokenInfo.address,
+          this.coingecko,
+          this.config.baseCurrency
+        )
+        result.prices.push(
+          new Price({
+            date: DateTime.local(),
+            holding,
+            amount,
+            symbol: new TokenSymbol(this.config.baseCurrency),
+          })
+        )
+      }
+    }
     return Promise.resolve()
   }
 
@@ -127,7 +156,9 @@ export class UniswapMiddleware implements Middleware {
     if (token && lpTokenIndex !== -1) {
       const lpTokenTransfer = combinedTx.erc20Transfers[lpTokenIndex]
       lpTokenTransfer.tokenSymbol = `UNI-LP-${token.tokenSymbol}`
-      this.liquidityTokens[lpTokenTransfer.contractAddress] = lpTokenTransfer.tokenSymbol
+      this.liquidityTokens[lpTokenTransfer.contractAddress] = new TokenSymbol(
+        lpTokenTransfer.tokenSymbol
+      )
 
       if (action === LiquidityAction.Add) {
         beanTx.narration = `Add ${token?.tokenSymbol} liquidity to Uniswap`
@@ -157,5 +188,74 @@ export class UniswapMiddleware implements Middleware {
         beanTx.narration = `Remove ${token?.tokenSymbol} liquidity to Uniswap`
       }
     }
+  }
+}
+
+interface PairToken {
+  symbol: TokenSymbol
+  contractAddress: string
+  balance: Big
+}
+interface Pair {
+  token0: PairToken
+  token1: PairToken
+}
+
+export async function getLiquidityTokenPrice(
+  liquidityTokenAddress: string,
+  coingecko: CoinGecko,
+  baseCurrency: string
+) {
+  const pair = await getLiquidityPair(liquidityTokenAddress)
+  const coinInfo0 = await coingecko.getCoinInfoByContractAddress(pair.token0.contractAddress)
+  const coinInfo1 = await coingecko.getCoinInfoByContractAddress(pair.token1.contractAddress)
+  const price0 = coinInfo0.market_data.current_price[baseCurrency.toLowerCase()]
+  const price1 = coinInfo1.market_data.current_price[baseCurrency.toLowerCase()]
+  return pair.token0.balance.mul(price0).plus(pair.token1.balance.mul(price1))
+}
+
+async function getLiquidityPair(
+  liquidityTokenAddress: string,
+  provider = getDefaultProvider()
+): Promise<Pair> {
+  const lpToken = new Contract(liquidityTokenAddress, UNISWAP_LIQUIDITY_ABI, provider)
+  const lpDecimal = await lpToken.decimals()
+  const lpAmount = new Big(1)
+  const lpTotalSupply = parseBigNumber(await lpToken.totalSupply(), lpDecimal)
+  const [reserve0, reserve1] = await lpToken.getReserves()
+  const [token0Addr, token1Addr] = await Promise.all([lpToken.token0(), lpToken.token1()])
+  const tokenInfo0 = await getTokenInfo(token0Addr)
+  const tokenInfo1 = await getTokenInfo(token1Addr)
+
+  return {
+    token0: getPairToken(tokenInfo0, reserve0, lpAmount, lpTotalSupply),
+    token1: getPairToken(tokenInfo1, reserve1, lpAmount, lpTotalSupply),
+  }
+}
+
+function getPairToken(
+  tokenInfo: TokenInfo,
+  reserve: number,
+  lpAmount: Big,
+  lpTotalSupply: Big
+): PairToken {
+  return {
+    contractAddress: tokenInfo.address,
+    symbol: tokenInfo.symbol,
+    balance: lpAmount
+      .mul(reserve.toString())
+      .div(lpTotalSupply)
+      .div(new Big(10).pow(tokenInfo.decimal)),
+  }
+}
+
+async function getTokenInfo(address: string, provider = getDefaultProvider()): Promise<TokenInfo> {
+  const token = new Contract(address, ERC20_ABI, provider)
+  const symbol = await token.symbol()
+  const decimal: number = await token.decimals()
+  return {
+    symbol: new TokenSymbol(symbol),
+    decimal,
+    address,
   }
 }
