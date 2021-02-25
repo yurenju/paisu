@@ -103,3 +103,18 @@ export function getTransferPostings(
 
   return [fromPosting, toPosting]
 }
+
+export function getTransferNarration(
+  accounts: Account[],
+  from: string,
+  amount: Big,
+  symbol: TokenSymbol
+) {
+  const found = findAccount(accounts, from)
+
+  if (found) {
+    return `Transfer ${amount} ${symbol} out`
+  } else {
+    return `Transfer ${amount} ${symbol} in`
+  }
+}

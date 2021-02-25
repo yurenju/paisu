@@ -48,15 +48,18 @@ export class Etherscan {
     offset = DEFAULT_OFFSET
   ): Promise<NormalTx[]> {
     const { apiKey } = this
-    return this.query<NormalTx[]>({
-      apiKey,
-      address,
-      module: Module.Account,
-      action: Action.TxList,
-      sort,
-      offset,
-      startBlock,
-    })
+    return this.query<NormalTx[]>(
+      {
+        apiKey,
+        address,
+        module: Module.Account,
+        action: Action.TxList,
+        sort,
+        offset,
+        startBlock,
+      },
+      true
+    )
   }
 
   getInternalTransactions(
@@ -66,15 +69,18 @@ export class Etherscan {
     offset = DEFAULT_OFFSET
   ): Promise<InternalTx[]> {
     const { apiKey } = this
-    return this.query<InternalTx[]>({
-      apiKey,
-      address,
-      module: Module.Account,
-      action: Action.TxListInternal,
-      sort,
-      offset,
-      startBlock,
-    })
+    return this.query<InternalTx[]>(
+      {
+        apiKey,
+        address,
+        module: Module.Account,
+        action: Action.TxListInternal,
+        sort,
+        offset,
+        startBlock,
+      },
+      true
+    )
   }
 
   getErc20Transfers(
@@ -84,15 +90,18 @@ export class Etherscan {
     offset = DEFAULT_OFFSET
   ): Promise<Erc20Transfer[]> {
     const { apiKey } = this
-    return this.query<Erc20Transfer[]>({
-      apiKey,
-      address,
-      module: Module.Account,
-      action: Action.TokenTx,
-      sort,
-      offset,
-      startBlock,
-    })
+    return this.query<Erc20Transfer[]>(
+      {
+        apiKey,
+        address,
+        module: Module.Account,
+        action: Action.TokenTx,
+        sort,
+        offset,
+        startBlock,
+      },
+      true
+    )
   }
 
   getErc20Balance(accountAddress: string, contractAddress: string): Promise<string> {

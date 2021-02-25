@@ -1,5 +1,5 @@
 import Big from "big.js"
-import { DateTime } from "luxon"
+import { DateTime, Duration } from "luxon"
 import { Middleware, RoastedResult } from "."
 import { Balance, BookingMethod, Cost, Open, Posting, TokenSymbol, Transaction } from "../beancount"
 import { Option } from "../beancount/option"
@@ -14,6 +14,7 @@ import {
   AccountType,
   getAccountName,
   getTokenInfosByTransfers,
+  getTransferNarration,
   getTransferPostings,
   isExchange,
   TokenInfo,
@@ -70,6 +71,16 @@ export class RegularMiddleware implements Middleware {
     if (combinedTx.normalTx) {
       const postings = await this.getNormalTxPostings(combinedTx.normalTx, ethCost)
       beanTx.postings.push(...postings)
+
+      if (combinedTx.normalTx.value !== "0" && combinedTx.erc20Transfers.length === 0) {
+        const amount = parseBigNumber(combinedTx.normalTx.value)
+        beanTx.narration = getTransferNarration(
+          this.config.accounts,
+          combinedTx.normalTx.from,
+          amount,
+          ETH_SYMBOL
+        )
+      }
     }
 
     // internal transactions
@@ -81,6 +92,21 @@ export class RegularMiddleware implements Middleware {
     beanTx.postings.push(...internalTxPostings.flat())
 
     // erc20 transfers
+
+    // fill narration if tx is a single erc20 transfer
+    if (
+      combinedTx.erc20Transfers.length === 1 &&
+      (!combinedTx.normalTx || combinedTx.normalTx.value === "0")
+    ) {
+      const transfer = combinedTx.erc20Transfers[0]
+      const amount = parseBigNumber(transfer.value, Number.parseInt(transfer.tokenDecimal))
+      beanTx.narration = getTransferNarration(
+        this.config.accounts,
+        transfer.from,
+        amount,
+        new TokenSymbol(transfer.tokenSymbol)
+      )
+    }
     const erc20TransferPostings = await Promise.all(
       combinedTx.erc20Transfers.map((erc20Transfer) => this.getErc20TransferPostings(erc20Transfer))
     )
@@ -162,10 +188,12 @@ export class RegularMiddleware implements Middleware {
   }
 
   async getBalances(account: Account, tokenInfos: TokenInfo[]): Promise<Balance[]> {
+    const tomorrow = DateTime.local().plus(Duration.fromObject({ day: 1 }))
     const balances: Balance[] = []
     const ethBalanceAmount = await this.etherscan.getEthBalance(account.address)
     balances.push(
       new Balance({
+        date: tomorrow,
         account: account.name,
         amount: parseBigNumber(ethBalanceAmount),
         symbol: ETH_SYMBOL,
@@ -177,6 +205,7 @@ export class RegularMiddleware implements Middleware {
       const result = await this.etherscan.getErc20Balance(account.address, tokenInfo.address)
       balances.push(
         new Balance({
+          date: tomorrow,
           account: account.name,
           amount: parseBigNumber(result, tokenInfo.decimal),
           symbol: tokenInfo.symbol,
