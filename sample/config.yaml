@@ -1,8 +1,8 @@
 accounts:
   - name: Assets:GoldenTestResult
     address: "0x6344793A588C7B3076bf74562463998b2966eE91"
-defaultExpense: Expenses:Unknown
-defaultIncome: Income:Unknown
+defaultExpense: Expenses:Default
+defaultIncome: Income:Default
 pnlAccount: Income:Pnl
 txFeeAccount: Expenses:Ethereum:TxFee
 baseCurrency: USD
