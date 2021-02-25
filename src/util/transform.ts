@@ -113,8 +113,8 @@ export function getTransferNarration(
   const found = findAccount(accounts, from)
 
   if (found) {
-    return `Transfer ${amount} ${symbol} out`
+    return `Transfer -${amount} ${symbol}`
   } else {
-    return `Transfer ${amount} ${symbol} in`
+    return `Transfer ${amount} ${symbol}`
   }
 }

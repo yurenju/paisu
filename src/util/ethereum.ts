@@ -1,5 +1,8 @@
+import { Contract, getDefaultProvider } from "ethers"
 import { TokenSymbol } from "../beancount/token_symbol"
+import { ERC20_ABI } from "../middleware/erc20_abi"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
+import { compareAddress, TokenInfo } from "./transform"
 
 export const ETH_DECIMALS = 18
 export const ETH_SYMBOL = new TokenSymbol("ETH")
@@ -68,4 +71,23 @@ export function combineTxs(
   })
 
   return combinedTxs.sort((txA, txB) => txA.timeStamp - txB.timeStamp)
+}
+
+export function getShortAddress(address: string): string {
+  return `${address.substr(0, 6)}...${address.slice(-4)}`
+}
+
+export async function getTokenInfo(
+  address: string,
+  provider = getDefaultProvider()
+): Promise<TokenInfo> {
+  const saiAddr = "0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359"
+  const token = new Contract(address, ERC20_ABI, provider)
+  const symbol = compareAddress(address, saiAddr) ? "SAI" : await token.symbol()
+  const decimal: number = await token.decimals()
+  return {
+    symbol: new TokenSymbol(symbol),
+    decimal,
+    address,
+  }
 }

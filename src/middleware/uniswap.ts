@@ -8,7 +8,7 @@ import { Price } from "../beancount/price"
 import { Config } from "../config"
 import { CoinGecko, ETHEREUM_COIN_ID } from "../service/coingecko"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
-import { TxCombined } from "../util/ethereum"
+import { getTokenInfo, TxCombined } from "../util/ethereum"
 import { parseBigNumber } from "../util/misc"
 import {
   AccountType,
@@ -17,7 +17,7 @@ import {
   getTokenInfosByTransfers,
   TokenInfo,
 } from "../util/transform"
-import { ERC20_ABI, UNISWAP_LIQUIDITY_ABI, UNISWAP_ROUTER_ABI } from "./uniswap_abi"
+import { UNISWAP_LIQUIDITY_ABI, UNISWAP_ROUTER_ABI } from "./uniswap_abi"
 
 interface LiquidityTokens {
   [contractAddress: string]: TokenSymbol
@@ -246,16 +246,5 @@ function getPairToken(
       .mul(reserve.toString())
       .div(lpTotalSupply)
       .div(new Big(10).pow(tokenInfo.decimal)),
-  }
-}
-
-async function getTokenInfo(address: string, provider = getDefaultProvider()): Promise<TokenInfo> {
-  const token = new Contract(address, ERC20_ABI, provider)
-  const symbol = await token.symbol()
-  const decimal: number = await token.decimals()
-  return {
-    symbol: new TokenSymbol(symbol),
-    decimal,
-    address,
   }
 }

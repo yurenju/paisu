@@ -3,6 +3,7 @@ import { DateTime } from "luxon"
 import { Transaction } from "../beancount"
 import { Config } from "../config"
 import { Middleware, RoastedResult } from "../middleware"
+import { Erc20Middleware } from "../middleware/erc20"
 import { RegularMiddleware } from "../middleware/regular"
 import { SynthetixMiddle } from "../middleware/snx"
 import { TxFeeMiddleware } from "../middleware/txfee"
@@ -29,6 +30,7 @@ export class Transformer {
 
     this.middleware = [
       new TxFeeMiddleware(coingecko, config),
+      new Erc20Middleware(),
       new UniswapMiddleware(coingecko, config),
       new SynthetixMiddle(),
       new WethMiddleware(coingecko, config),
