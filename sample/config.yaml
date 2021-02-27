@@ -1,10 +1,10 @@
 accounts:
-  - name: Assets:GoldenTestResult
-    address: "0x6344793A588C7B3076bf74562463998b2966eE91"
+  - name: Assets:Default
+    address: "<YOUR_ETHEREUM_ACCOUNT>"
 defaultExpense: Expenses:Default
 defaultIncome: Income:Default
 pnlAccount: Income:Pnl
 txFeeAccount: Expenses:Ethereum:TxFee
 baseCurrency: USD
 etherscan:
-  apiKey: 3JSKEA1SYC1D36SED3C8FMV5IXMP1XP4DD
+  apiKey: "<YOUR_ETHERSCAN_API_KEY>"
