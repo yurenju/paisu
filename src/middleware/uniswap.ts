@@ -47,17 +47,23 @@ export class UniswapMiddleware implements Middleware {
 
       switch (description.name) {
         case "swapExactTokensForTokens": {
-          const fromToken = combinedTx.erc20Transfers.find((transfer) =>
-            compareAddress(description.args.path[0], transfer.contractAddress)
-          )
-          const toToken = combinedTx.erc20Transfers.find((transfer) =>
-            compareAddress(description.args.path.slice().pop(), transfer.contractAddress)
-          )
-
           if (tx.isError === "1") {
             beanTx.narration = `Swap failed on Uniswap`
           } else {
-            beanTx.narration = `Swap ${fromToken?.tokenSymbol} -> ${toToken?.tokenSymbol} on Uniswap`
+            const fromToken = combinedTx.erc20Transfers.find((transfer) =>
+              compareAddress(description.args.path[0], transfer.contractAddress)
+            )
+            const toToken = combinedTx.erc20Transfers.find((transfer) =>
+              compareAddress(description.args.path.slice().pop(), transfer.contractAddress)
+            )
+
+            const fromAmount = parseBigNumber(
+              fromToken!.value,
+              Number.parseInt(fromToken!.tokenDecimal)
+            )
+            const toAmount = parseBigNumber(toToken!.value, Number.parseInt(toToken!.tokenDecimal))
+
+            beanTx.narration = `Swap ${fromAmount} ${fromToken?.tokenSymbol} -> ${toAmount} ${toToken?.tokenSymbol} on Uniswap`
           }
           break
         }
