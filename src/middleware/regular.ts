@@ -219,11 +219,12 @@ export class RegularMiddleware implements Middleware {
   async getPrices(tokenInfos: TokenInfo[]): Promise<Price[]> {
     const prices: Price[] = []
     const baseCurrency = this.config.baseCurrency.toLowerCase()
+    const today = DateTime.local()
 
-    const ethInfo = await this.coingecko.getCoinInfoById(ETHEREUM_COIN_ID)
+    const ethInfo = await this.coingecko.getHistoryPrice(ETHEREUM_COIN_ID, today)
     prices.push(
       new Price({
-        date: DateTime.local(),
+        date: today,
         holding: ETH_SYMBOL,
         amount: new Big(ethInfo.market_data.current_price[baseCurrency]),
         symbol: new TokenSymbol(baseCurrency),
@@ -235,12 +236,16 @@ export class RegularMiddleware implements Middleware {
       console.log(`getting price for ${tokenInfo.symbol} (${tokenInfo.address})`)
 
       try {
-        const result = await this.coingecko.getCoinInfoByContractAddress(tokenInfo.address)
+        const result = await this.coingecko.getHistoryPriceByContractAddress(
+          tokenInfo.address,
+          today,
+          baseCurrency
+        )
         prices.push(
           new Price({
-            date: DateTime.local(),
+            date: today,
             holding: tokenInfo.symbol,
-            amount: new Big(result.market_data.current_price[baseCurrency]),
+            amount: result,
             symbol: new TokenSymbol(baseCurrency),
           })
         )
