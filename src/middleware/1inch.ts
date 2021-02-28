@@ -1,12 +1,19 @@
 import { Interface } from "@ethersproject/abi"
+import { Contract } from "@ethersproject/contracts"
+import { getDefaultProvider } from "@ethersproject/providers"
+import Big from "big.js"
 import { DateTime } from "luxon"
 import fetch from "node-fetch"
 import { Middleware, RoastedResult } from "."
 import { TokenSymbol, Transaction } from "../beancount"
+import { Price } from "../beancount/price"
+import { Config } from "../config"
+import { CoinGecko } from "../service/coingecko"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
-import { TxCombined } from "../util/ethereum"
+import { getTokenInfo, TxCombined } from "../util/ethereum"
+import { getPairToken } from "../util/liquidity"
 import { parseBigNumber } from "../util/misc"
-import { compareAddress } from "../util/transform"
+import { compareAddress, getTokenInfosByTransfers } from "../util/transform"
 import { ONE_INCH_EXCHANGE_V2_ABI, ONE_INCH_LP_ABI, ONE_INCH_LP_FARM_ABI } from "./1inch_abi"
 import { OneInchFarmingInfo, OneInchTokenInfo } from "./1inch_model"
 
@@ -17,6 +24,13 @@ const MOONISWAP_TOKENS_URL = `${ONE_INCH_TOKEN_BASEURL}/tokens/pool/mooniswap`
 export class OneInchMiddleware implements Middleware {
   mooniswapTokenMap: Map<string, OneInchTokenInfo> = new Map()
   farmingInfos: OneInchFarmingInfo[] = []
+  coingecko: CoinGecko
+  config: Config
+
+  constructor(coingecko: CoinGecko, config: Config) {
+    this.coingecko = coingecko
+    this.config = config
+  }
 
   async roastTransaction(combinedTx: TxCombined, beanTx: Transaction): Promise<void> {
     if (!combinedTx.normalTx) {
@@ -93,7 +107,7 @@ export class OneInchMiddleware implements Middleware {
 
     return Promise.resolve()
   }
-  roastRestBeans(
+  async roastRestBeans(
     date: DateTime,
     combinedTxs: TxCombined[],
     normalTxs: NormalTx[],
@@ -101,6 +115,49 @@ export class OneInchMiddleware implements Middleware {
     erc20Transfers: Erc20Transfer[],
     result: RoastedResult
   ): Promise<void> {
+    const tokenInfos = getTokenInfosByTransfers(erc20Transfers)
+    for (let i = 0; i < tokenInfos.length; i++) {
+      const tokenInfo = tokenInfos[i]
+      const farming = this.farmingInfos.find((farming) =>
+        compareAddress(farming.farmingAddress, tokenInfo.address)
+      )
+      if (farming) {
+        const farmingToken = new Contract(
+          farming.farmingAddress,
+          ONE_INCH_LP_FARM_ABI,
+          getDefaultProvider()
+        )
+        const symbol = new TokenSymbol(await farmingToken.symbol())
+        const token0 = await getTokenInfo(farming.token0)
+        const token1 = await getTokenInfo(farming.token1)
+        const pairToken0 = getPairToken(
+          token0,
+          Number.parseInt(farming.reserve0),
+          new Big(1),
+          parseBigNumber(farming.poolTotalSupply)
+        )
+        const pairToken1 = getPairToken(
+          token1,
+          Number.parseInt(farming.reserve1),
+          new Big(1),
+          parseBigNumber(farming.poolTotalSupply)
+        )
+        const coinInfo0 = await this.coingecko.getCoinInfoByContractAddress(farming.token0)
+        const coinInfo1 = await this.coingecko.getCoinInfoByContractAddress(farming.token1)
+        const price0 = coinInfo0.market_data.current_price[this.config.baseCurrency.toLowerCase()]
+        const price1 = coinInfo1.market_data.current_price[this.config.baseCurrency.toLowerCase()]
+        const amount = pairToken0.balance.mul(price0).plus(pairToken1.balance.mul(price1))
+        result.prices.push(
+          new Price({
+            date: DateTime.local(),
+            holding: symbol,
+            amount,
+            symbol: new TokenSymbol(this.config.baseCurrency),
+          })
+        )
+      }
+    }
+
     return Promise.resolve()
   }
 }

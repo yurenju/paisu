@@ -1,5 +1,6 @@
 import Big from "big.js"
 import Bottleneck from "bottleneck"
+import { constants } from "ethers"
 import { DateTime } from "luxon"
 import fetch from "node-fetch"
 import { Cache } from "../util/cache"
@@ -25,8 +26,12 @@ export class CoinGecko {
   }
 
   async getCoinInfoByContractAddress(contractAddress: string): Promise<GetCoinInfoResponse> {
-    const path = `/coins/ethereum/contract/${contractAddress}`
-    return this.getCoinInfo(path)
+    if (contractAddress === constants.AddressZero) {
+      return this.getCoinInfoById(ETHEREUM_COIN_ID)
+    } else {
+      const path = `/coins/ethereum/contract/${contractAddress}`
+      return this.getCoinInfo(path)
+    }
   }
 
   async getCoinInfoById(coinId: string): Promise<GetCoinInfoResponse> {

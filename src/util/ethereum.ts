@@ -1,4 +1,4 @@
-import { Contract, getDefaultProvider } from "ethers"
+import { constants, Contract, getDefaultProvider } from "ethers"
 import { TokenSymbol } from "../beancount/token_symbol"
 import { ERC20_ABI } from "../middleware/erc20_abi"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
@@ -82,6 +82,14 @@ export async function getTokenInfo(
   provider = getDefaultProvider()
 ): Promise<TokenInfo> {
   const saiAddr = "0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359"
+  if (address === constants.AddressZero) {
+    return {
+      symbol: ETH_SYMBOL,
+      decimal: 18,
+      address,
+    }
+  }
+
   const token = new Contract(address, ERC20_ABI, provider)
   const symbol = compareAddress(address, saiAddr) ? "SAI" : await token.symbol()
   const decimal: number = await token.decimals()

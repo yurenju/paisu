@@ -3,7 +3,6 @@ import { DateTime } from "luxon"
 import { Transaction } from "../beancount"
 import { Config } from "../config"
 import { Middleware, RoastedResult } from "../middleware"
-import { OneInchMiddleware } from "../middleware/1inch"
 import { CompoundMiddleware } from "../middleware/compound"
 import { Erc20Middleware } from "../middleware/erc20"
 import { RegularMiddleware } from "../middleware/regular"
@@ -35,7 +34,8 @@ export class Transformer {
       new Erc20Middleware(),
       new CompoundMiddleware(config),
       new UniswapMiddleware(coingecko, config),
-      new OneInchMiddleware(),
+      // 1Inch does not work now
+      // new OneInchMiddleware(coingecko, config),
       new SynthetixMiddle(),
       new WethMiddleware(coingecko, config),
       new RegularMiddleware(coingecko, etherscan, config),
