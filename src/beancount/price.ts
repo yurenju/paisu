@@ -25,6 +25,6 @@ export class Price extends Directive {
 
   toString(): string {
     const { date, holding, amount, symbol } = this
-    return `${date.toISODate()} price ${holding} ${amount} ${symbol}`
+    return `${date.toISODate()} price ${holding} ${amount.toFixed()} ${symbol}`
   }
 }

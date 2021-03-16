@@ -221,34 +221,40 @@ export class RegularMiddleware implements Middleware {
     const baseCurrency = this.config.baseCurrency.toLowerCase()
     const today = DateTime.local()
 
-    const ethInfo = await this.coingecko.getHistoryPrice(ETHEREUM_COIN_ID, today)
-    prices.push(
-      new Price({
-        date: today,
-        holding: ETH_SYMBOL,
-        amount: new Big(ethInfo.market_data.current_price[baseCurrency]),
-        symbol: new TokenSymbol(baseCurrency),
-      })
+    const ethMarketData = await this.coingecko.getHistoricalMarketData(
+      ETHEREUM_COIN_ID,
+      baseCurrency
     )
+    ethMarketData.prices.forEach(([timestamp, price]) => {
+      prices.push(
+        new Price({
+          date: DateTime.fromMillis(timestamp),
+          holding: ETH_SYMBOL,
+          amount: new Big(price),
+          symbol: new TokenSymbol(baseCurrency),
+        })
+      )
+    })
 
     for (let i = 0; i < tokenInfos.length; i++) {
       const tokenInfo = tokenInfos[i]
       console.log(`getting price for ${tokenInfo.symbol} (${tokenInfo.address})`)
 
       try {
-        const result = await this.coingecko.getHistoryPriceByContractAddress(
+        const result = await this.coingecko.getHistoricalMarketDataByContractAddress(
           tokenInfo.address,
-          today,
           baseCurrency
         )
-        prices.push(
-          new Price({
-            date: today,
-            holding: tokenInfo.symbol,
-            amount: result,
-            symbol: new TokenSymbol(baseCurrency),
-          })
-        )
+        result.prices.forEach(([timestamp, price]) => {
+          prices.push(
+            new Price({
+              date: DateTime.fromMillis(timestamp),
+              holding: tokenInfo.symbol,
+              amount: new Big(price),
+              symbol: new TokenSymbol(baseCurrency),
+            })
+          )
+        })
       } catch (e) {
         //do nothing
       }

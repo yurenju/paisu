@@ -76,3 +76,9 @@ export interface GetCoinInfoResponse {
   contract_address: string
   market_data: MarketData
 }
+
+export interface MarketChartResponse {
+  prices: number[][]
+  market_caps: number[][]
+  total_volumes: number[][]
+}

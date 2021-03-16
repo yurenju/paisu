@@ -4,7 +4,7 @@ import { constants } from "ethers"
 import { DateTime } from "luxon"
 import fetch from "node-fetch"
 import { Cache } from "../util/cache"
-import { GetCoinInfoResponse } from "./coingecko_model"
+import { GetCoinInfoResponse, MarketChartResponse } from "./coingecko_model"
 
 const defaultCache = Cache.load("coingecko.cache")
 const defaultLimiter = new Bottleneck({
@@ -81,6 +81,34 @@ export class CoinGecko {
       console.log(text)
       throw e
     }
+  }
+
+  async getHistoricalMarketData(
+    coinId: string,
+    fiat: string,
+    days = "max",
+    interval = "daily"
+  ): Promise<MarketChartResponse> {
+    const url = `${this.baseUrl}/coins/${coinId}/market_chart?vs_currency=${fiat}&days=${days}&interval=${interval}`
+    const text = await this.limiter.schedule(() => fetch(url).then((res) => res.text()))
+
+    try {
+      return JSON.parse(text) as MarketChartResponse
+    } catch (e) {
+      console.log(text)
+      throw e
+    }
+  }
+
+  async getHistoricalMarketDataByContractAddress(
+    contractAddress: string,
+    fiat: string,
+    days = "max",
+    interval = "daily"
+  ) {
+    return this.getCoinInfoByContractAddress(contractAddress).then((coinInfo) =>
+      this.getHistoricalMarketData(coinInfo.id, fiat, days, interval)
+    )
   }
 
   async getHistoryPriceByCurrency(coinId: string, date: DateTime, currency: string): Promise<Big> {
