@@ -82,6 +82,8 @@ export class Transformer {
 
     for (let i = 0; i < this.middleware.length; i++) {
       const middleware = this.middleware[i]
+      const middlewareName = middleware.constructor.name
+      console.log(`roasting rest of bean for ${middlewareName} middleware`)
       await middleware.roastRestBeans(
         date,
         combinedTxs,

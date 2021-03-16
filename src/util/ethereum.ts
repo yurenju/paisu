@@ -2,6 +2,7 @@ import { constants, Contract, getDefaultProvider } from "ethers"
 import { TokenSymbol } from "../beancount/token_symbol"
 import { ERC20_ABI } from "../middleware/erc20_abi"
 import { Erc20Transfer, InternalTx, NormalTx } from "../service/etherscan_model"
+import { Cache } from "./cache"
 import { compareAddress, TokenInfo } from "./transform"
 
 export const ETH_DECIMALS = 18
@@ -79,7 +80,8 @@ export function getShortAddress(address: string): string {
 
 export async function getTokenInfo(
   address: string,
-  provider = getDefaultProvider()
+  provider = getDefaultProvider(),
+  cache = Cache.load("token-info.cache")
 ): Promise<TokenInfo> {
   const saiAddr = "0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359"
   if (address === constants.AddressZero) {
@@ -90,12 +92,26 @@ export async function getTokenInfo(
     }
   }
 
-  const token = new Contract(address, ERC20_ABI, provider)
-  const symbol = compareAddress(address, saiAddr) ? "SAI" : await token.symbol()
-  const decimal: number = await token.decimals()
-  return {
-    symbol: new TokenSymbol(symbol),
-    decimal,
-    address,
+  let text = cache.get(address)
+  let tokenInfo: TokenInfo
+  if (!text) {
+    const token = new Contract(address, ERC20_ABI, provider)
+    const symbol = compareAddress(address, saiAddr) ? "SAI" : await token.symbol()
+    const decimal: number = await token.decimals()
+    tokenInfo = {
+      symbol: new TokenSymbol(symbol),
+      decimal,
+      address,
+    }
+  } else {
+    const { symbol, decimal } = JSON.parse(text)
+    tokenInfo = {
+      symbol: new TokenSymbol(symbol.tokenSymbol),
+      decimal,
+      address,
+    }
   }
+
+  await cache.put(address, JSON.stringify(tokenInfo))
+  return tokenInfo
 }
